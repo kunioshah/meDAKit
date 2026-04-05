@@ -1,3 +1,8 @@
+"""
+Custom RAG (Retrieval-Augmented Generation) service for medical data.
+Uses ChromaDB and two-tower embeddings (PubMedBERT for text, SigLIP/CLIP for images)
+to provide relevant clinical context for diagnostic queries.
+"""
 import os
 import json
 from pathlib import Path

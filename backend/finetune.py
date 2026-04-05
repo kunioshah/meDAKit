@@ -1,15 +1,12 @@
 """
-Gemma 4 E4B QLoRA Fine-Tuning Script
-Optimized for: Windows, 32GB RAM, RTX 5070 Ti (16GB VRAM)
+Gemma 4 E4B QLoRA Fine-Tuning Script.
+Optimized for training medical conversational models on clinical datasets.
+Utilizes QLoRA and LoRA+ for memory-efficient training on Windows/RTX hardware.
 
 Usage:
     1. Set HF_TOKEN in .env file (or pass --hf_token)
     2. pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-    3. pip install "transformers @ git+https://github.com/huggingface/transformers.git"
-    4. pip install "peft @ git+https://github.com/huggingface/peft.git"
-    5. pip install "trl @ git+https://github.com/huggingface/trl.git"
-    6. pip install "accelerate>=1.5.0" datasets scipy bitsandbytes>=0.45.0 huggingface_hub python-dotenv
-    7. python finetune.py
+    3. python finetune.py
 """
 
 import argparse
