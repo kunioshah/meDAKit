@@ -55,11 +55,11 @@ export default function App() {
     <div className="h-screen bg-[#f5f5f5] relative overflow-hidden flex flex-col">
       <PlusBackground />
 
-      <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
+      <div className="relative z-10 flex-1 min-h-0 flex flex-col overflow-hidden">
         <Header onConnectToPhone={() => setIsConnectModalOpen(true)} />
 
-        <main className="max-w-[960px] mx-auto px-6 py-6 flex-1 min-h-0 overflow-hidden flex flex-col">
-          <DataDisplay data={medicalData} />
+        <main className="flex-1 min-h-0 flex flex-col max-w-[960px] mx-auto w-full px-6 py-6">
+          <DataDisplay data={medicalData} patientId={id} />
         </main>
       </div>
 

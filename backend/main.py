@@ -1,4 +1,5 @@
 import re
+import base64
 import subprocess
 import platform
 import os
@@ -11,6 +12,7 @@ from typing import Optional, Dict, Any
 
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -188,6 +190,11 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "patients")
 def ensure_data_dir():
     os.makedirs(DATA_DIR, exist_ok=True)
 
+# Serve patient images as static files at /data/patients/<id>/images/<file>
+_data_root = os.path.join(os.path.dirname(__file__), "..", "data")
+os.makedirs(_data_root, exist_ok=True)
+app.mount("/data", StaticFiles(directory=_data_root), name="data")
+
 def generate_patient_id() -> str:
     """Generate a random max 4-digit hex number, e.g., '1A3F'"""
     # 0 to 65535 in hex is 0x0 to 0xFFFF
@@ -233,7 +240,8 @@ def patient_signup(info: Dict[str, Any] = Body(...)):
             raise HTTPException(status_code=500, detail="Database full or error generating ID")
             
     os.makedirs(patient_dir)
-    
+    os.makedirs(os.path.join(patient_dir, "images"))
+
     # Save info
     info["id"] = patient_id
     info["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -305,18 +313,44 @@ def get_conversations(patient_id: str):
 
 @app.post("/api/patients/{patient_id}/conversations")
 def add_conversation_entry(patient_id: str, req: ConversationEntryRequest):
-    """Record a single exchange: timestamp, text, images, response."""
+    """Record a single exchange: timestamp, text, images (saved to disk), response."""
     patient_id = patient_id.upper()
-    conv_path = os.path.join(DATA_DIR, patient_id, "conversations.json")
+    patient_dir = os.path.join(DATA_DIR, patient_id)
+    conv_path = os.path.join(patient_dir, "conversations.json")
     if not os.path.exists(conv_path):
         raise HTTPException(status_code=404, detail="Patient not found")
+
+    # Save each base64 image to patients/<id>/images/ and collect relative URLs
+    images_dir = os.path.join(patient_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
+    image_paths: list[str] = []
+    for img_data_url in (req.images or []):
+        # Parse "data:<mime>;base64,<data>" or raw base64
+        if "," in img_data_url:
+            header, b64 = img_data_url.split(",", 1)
+            ext = "jpg"
+            if "png" in header:
+                ext = "png"
+            elif "gif" in header:
+                ext = "gif"
+            elif "webp" in header:
+                ext = "webp"
+        else:
+            b64, ext = img_data_url, "jpg"
+        filename = f"{uuid.uuid4()}.{ext}"
+        filepath = os.path.join(images_dir, filename)
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(b64))
+        # Store as a URL path served by the static mount
+        image_paths.append(f"/data/patients/{patient_id}/images/{filename}")
+
     with open(conv_path, "r") as f:
         data = json.load(f)
     entry = {
         "id": str(uuid.uuid4()),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "text": req.text or "",
-        "images": req.images or [],
+        "images": image_paths,
         "response": req.response or "",
     }
     data.setdefault("conversations", []).append(entry)
