@@ -49,7 +49,8 @@ npm-debug.log*
 
 # Large model files and directories
 gemma4-medical-q8.gguf
+gemma4-medical-adapter.gguf
 llama.cpp/
 llama.cpp.zip
 offload/
-chroma.sqlite3
+chroma_db/
