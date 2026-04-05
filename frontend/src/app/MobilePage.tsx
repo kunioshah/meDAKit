@@ -12,11 +12,12 @@ export default function MobilePage() {
   const [generatedText, setGeneratedText] = useState('');
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
-  const [hasUploaded, setHasUploaded] = useState(false);
+  const [hasSent, setHasSent] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
 
   const handleSend = async () => {
     setSending(true);
+    setHasSent(true);
     try {
       await fetch('/api/phone-data', {
         method: 'POST',
@@ -37,7 +38,6 @@ export default function MobilePage() {
         setCurrentIndex(next.length - 1);
         return next;
       });
-      setHasUploaded(true);
     };
     reader.readAsDataURL(file);
   };
@@ -53,9 +53,30 @@ export default function MobilePage() {
     </>
   );
 
-  const thumbnail = (
+  const portraitThumbnail = (
     <AnimatePresence>
-      {images.length > 0 && !generatedText && (
+      {images.length > 0 && !generatedText && !hasSent && (
+        <motion.div
+          className="flex gap-2 overflow-x-auto shrink-0"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}
+        >
+          {images.map((img, i) => (
+            <button key={i} onClick={() => setCurrentIndex(i)}
+              className={`w-10 h-10 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-colors ${i === currentIndex ? 'border-[#7ed957]' : 'border-transparent'}`}>
+              <img src={img} className="w-full h-full object-cover" alt={`thumb-${i}`} />
+            </button>
+          ))}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const landscapeThumbnail = (
+    <AnimatePresence>
+      {images.length > 0 && !generatedText && !hasSent && (
         <motion.div
           className="flex gap-2 overflow-x-auto shrink-0"
           initial={{ opacity: 0, height: 0 }}
@@ -116,29 +137,29 @@ export default function MobilePage() {
   // Large stacked cards shown before first upload
   const portraitInitialCards = (
     <AnimatePresence>
-      {!hasUploaded && (
+      {!hasSent && (
         <motion.div className="flex flex-col gap-3 shrink-0"
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.35, ease: 'easeInOut' }}>
           <button onClick={() => cameraInputRef.current?.click()}
-            className="w-full bg-white/60 backdrop-blur-sm rounded-[24px] py-8 flex flex-col items-center gap-3 hover:bg-white/80 transition-colors">
-            <div className="w-16 h-16 rounded-full bg-[#7ed957]/20 flex items-center justify-center">
-              <Camera className="w-8 h-8 text-[#7ed957]" strokeWidth={1.5} />
+            className="w-full bg-white/60 backdrop-blur-sm rounded-[24px] py-5 flex flex-col items-center gap-2 hover:bg-white/80 transition-colors">
+            <div className="w-12 h-12 rounded-full bg-[#7ed957]/20 flex items-center justify-center">
+              <Camera className="w-6 h-6 text-[#7ed957]" strokeWidth={1.5} />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-black">Take photo</p>
-              <p className="text-xs text-gray-500 mt-0.5">Real-time diagnosis</p>
+              <p className="font-semibold text-black text-sm">Take photo</p>
+              <p className="text-xs text-gray-500">Real-time diagnosis</p>
             </div>
           </button>
 
           <button onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-white/60 backdrop-blur-sm rounded-[24px] py-8 flex flex-col items-center gap-3 hover:bg-white/80 transition-colors">
-            <div className="w-16 h-16 rounded-full bg-[#7ed957]/20 flex items-center justify-center">
-              <Image className="w-8 h-8 text-[#7ed957]" strokeWidth={1.5} />
+            className="w-full bg-white/60 backdrop-blur-sm rounded-[24px] py-5 flex flex-col items-center gap-2 hover:bg-white/80 transition-colors">
+            <div className="w-12 h-12 rounded-full bg-[#7ed957]/20 flex items-center justify-center">
+              <Image className="w-6 h-6 text-[#7ed957]" strokeWidth={1.5} />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-black">Upload from device</p>
-              <p className="text-xs text-gray-500 mt-0.5">Upload from roll</p>
+              <p className="font-semibold text-black text-sm">Upload from device</p>
+              <p className="text-xs text-gray-500">Upload from roll</p>
             </div>
           </button>
         </motion.div>
@@ -149,7 +170,7 @@ export default function MobilePage() {
   // Compact input bar shown after first upload
   const portraitCompactBar = (
     <AnimatePresence>
-      {hasUploaded && (
+      {hasSent && (
         <motion.div className="shrink-0 flex items-center gap-2 relative"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -221,11 +242,12 @@ export default function MobilePage() {
         </div>
 
         {/* Portrait layout */}
-        <main className="landscape:hidden flex-1 min-h-0 px-4 pb-4 flex flex-col gap-3">
+        <main className="landscape:hidden flex-1 min-h-0 px-4 pt-2 pb-4 flex flex-col gap-3">
           {genBox('flex-1 min-h-0')}
           {portraitInitialCards}
+          {portraitThumbnail}
           {/* Standard input shown before first upload */}
-          {!hasUploaded && (
+          {!hasSent && (
             <div className="flex gap-3 items-stretch shrink-0">
               {textInput('flex-1')}
               {sendBtn('px-4 min-w-14 flex items-center justify-center')}
@@ -235,12 +257,46 @@ export default function MobilePage() {
         </main>
 
         {/* Landscape layout */}
-        <div className="portrait:hidden flex-1 min-h-0 flex gap-3 px-4 pb-4">
+        <div className="portrait:hidden flex-1 min-h-0 flex gap-3 px-4 pt-2 pb-4">
           <div className="flex flex-col gap-3 w-[260px] shrink-0">
-            {actionCards}
-            {thumbnail}
+            <AnimatePresence>
+              {!hasSent && (
+                <motion.div className="flex flex-col gap-3"
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.35, ease: 'easeInOut' }}>
+                  {actionCards}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {landscapeThumbnail}
             {textInput('flex-1 min-h-0')}
-            {sendBtn('py-3 w-full')}
+            {hasSent ? (
+              <div className="shrink-0 flex items-center gap-2 relative">
+                <AnimatePresence>
+                  {plusMenuOpen && (
+                    <motion.div className="absolute bottom-14 left-0 flex flex-col gap-2 z-10"
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2 }}>
+                      <button onClick={() => cameraInputRef.current?.click()}
+                        className="flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-[14px] px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-white transition-colors">
+                        <Camera className="w-4 h-4 text-[#7ed957]" /> Take photo
+                      </button>
+                      <button onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-[14px] px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-white transition-colors">
+                        <Image className="w-4 h-4 text-[#7ed957]" /> Upload image
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <button onClick={() => setPlusMenuOpen(o => !o)}
+                  className="shrink-0 w-11 h-11 bg-white/60 hover:bg-white/80 rounded-full flex items-center justify-center transition-colors">
+                  <Plus className="w-5 h-5 text-gray-700" />
+                </button>
+                {arrowSendBtn}
+              </div>
+            ) : (
+              sendBtn('py-3 w-full')
+            )}
           </div>
           {genBox('flex-1 min-h-0')}
         </div>

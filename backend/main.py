@@ -120,6 +120,21 @@ class MessageCreateRequest(BaseModel):
     content: str
 
 
+@app.get("/api/patients")
+def list_patients():
+    ensure_data_dir()
+    patients = []
+    if os.path.exists(DATA_DIR):
+        for patient_id in os.listdir(DATA_DIR):
+            info_path = os.path.join(DATA_DIR, patient_id, "info.json")
+            if os.path.exists(info_path):
+                with open(info_path, "r") as f:
+                    info = json.load(f)
+                patients.append(info)
+    patients.sort(key=lambda p: p.get("last_updated", p.get("created_at", "")), reverse=True)
+    return {"patients": patients}
+
+
 @app.post("/api/patients/signup")
 def patient_signup(info: Dict[str, Any] = Body(...)):
     ensure_data_dir()
@@ -151,6 +166,32 @@ def patient_signup(info: Dict[str, Any] = Body(...)):
         json.dump({"conversations": []}, f, indent=2)
         
     return {"patient_id": patient_id}
+
+
+@app.patch("/api/patients/{patient_id}")
+def update_patient(patient_id: str, info: Dict[str, Any] = Body(...)):
+    patient_id = patient_id.upper()
+    info_path = os.path.join(DATA_DIR, patient_id, "info.json")
+    if not os.path.exists(info_path):
+        raise HTTPException(status_code=404, detail="Patient not found")
+    with open(info_path, "r") as f:
+        existing = json.load(f)
+    existing.update({k: v for k, v in info.items() if k not in ("id", "created_at")})
+    existing["last_updated"] = datetime.now(timezone.utc).isoformat()
+    with open(info_path, "w") as f:
+        json.dump(existing, f, indent=2)
+    return {"status": "ok", "patient": existing}
+
+
+@app.delete("/api/patients/{patient_id}")
+def delete_patient(patient_id: str):
+    import shutil
+    patient_id = patient_id.upper()
+    patient_dir = os.path.join(DATA_DIR, patient_id)
+    if not os.path.exists(patient_dir):
+        raise HTTPException(status_code=404, detail="Patient not found")
+    shutil.rmtree(patient_dir)
+    return {"status": "ok"}
 
 
 @app.post("/api/patients/login")

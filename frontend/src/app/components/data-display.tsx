@@ -9,7 +9,7 @@ interface DataDisplayProps {
 
 export function DataDisplay({ data }: DataDisplayProps) {
   return (
-    <div className="space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="space-y-4 flex-1 flex flex-col min-h-0">
       {/* Text Data Display - Large output box */}
       <div className="bg-white/60 backdrop-blur-sm rounded-[32px] p-8 min-h-[60vh] flex-1 min-h-0 overflow-y-auto">
         {data.text ? (
@@ -51,11 +51,9 @@ export function DataDisplay({ data }: DataDisplayProps) {
       </div>
 
       {/* Disclaimer */}
-      <div className="bg-amber-50/80 backdrop-blur-sm border border-amber-200 rounded-xl p-2.5">
-        <p className="text-xs text-amber-900 text-center">
-          AI-generated advice only. Not a substitute for professional medical care. Consult a healthcare provider for diagnosis and treatment.
-        </p>
-      </div>
+      <p className="shrink-0 text-[11px] text-gray-400 text-center">
+        AI-generated advice only. Not a substitute for professional medical care. Consult a healthcare provider for diagnosis and treatment.
+      </p>
     </div>
   );
 }
