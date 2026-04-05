@@ -1,4 +1,4 @@
-# DiamondHacks
+# MeDAKit
 
 ## Setup and Running
 
