@@ -59,12 +59,10 @@ class CustomRAG:
         # --- TWO TOWER ARCHITECTURE ---
         if SENTENCE_TRANSFORMERS_AVAILABLE:
             print("Loading Two-Tower Embedding Models...")
-            print("1. Loading SigLIP for Multimodal (Images/Text)...")
-            # SigLIP: Highly optimized multimodal model for aligning images to text queries.
-            # Much smarter than original CLIP, runs perfectly on Snapdragon CPU/NPU.
-            self.image_model = SentenceTransformer('nomic-ai/nomic-embed-vision-v1.5', trust_remote_code=True)
-            # Falling back to standard SigLIP as it is more stable in sentence-transformers
-            self.image_model = SentenceTransformer('google/siglip-base-patch16-224')
+            print("1. Loading CLIP for Multimodal (Images/Text)...")
+            # CLIP: Highly optimized multimodal model for aligning images to text queries.
+            # Runs perfectly on Snapdragon CPU/NPU.
+            self.image_model = SentenceTransformer('clip-ViT-B-32')
 
             print("2. Loading PubMedBERT for Clinical Text...")
             # PubMedBERT: Tiny but incredibly accurate for medical terminology.
@@ -156,17 +154,23 @@ class CustomRAG:
             )
         print("Image ingestion complete.")
 
-    def ingest_hf_datasets(self, dataset_path: Path = DEFAULT_HF_DATASET_PATH):
+    def ingest_hf_datasets(self):
         """
-        Embed and store text data from HuggingFace into the Text Collection using PubMedBERT.
+        Embed and store text data from HuggingFace dataset 'ericrisco/medrescue' into the Text Collection using PubMedBERT.
         """
         if not self.text_collection or not self.text_model:
             print("Text RAG components missing. Cannot ingest.")
             return
 
-        print(f"Ingesting HF datasets from {dataset_path} using PubMedBERT...")
-        if not dataset_path.exists():
-            print(f"Dataset path {dataset_path} not found.")
+        print("Ingesting HF dataset 'ericrisco/medrescue' using PubMedBERT...")
+        try:
+            from datasets import load_dataset
+            dataset = load_dataset('ericrisco/medrescue', split='train')
+        except ImportError:
+            print("The 'datasets' library is required to load HF datasets. Run: pip install datasets")
+            return
+        except Exception as e:
+            print(f"Failed to load dataset: {e}")
             return
 
         docs = []
@@ -174,37 +178,37 @@ class CustomRAG:
         ids = []
         embeddings = []
 
-        with open(dataset_path, "r") as f:
-            for i, line in enumerate(f):
-                if not line.strip(): continue
+        print(f"Loaded {len(dataset)} records from HF dataset.")
+
+        for i, record in enumerate(dataset):
+            try:
+                # Concatenate fields or use 'text'
+                content = record.get('text', '')
+                if not content:
+                    content = " ".join([f"{k}: {v}" for k, v in record.items() if isinstance(v, str)])
+                    
+                emb = self.embed_medical_text(content)
                 
-                try:
-                    record = json.loads(line)
-                    # We embed the JSON text, prioritizing explicit text fields
-                    content = record.get('text', str(record))
+                embeddings.append(emb)
+                docs.append(content)
+                metadatas.append({
+                    "source": "HF_medrescue",
+                    "type": "text"
+                })
+                ids.append(f"text_hf_{i}")
+                
+                if len(embeddings) >= 50:
+                    self.text_collection.add(
+                        embeddings=embeddings,
+                        documents=docs,
+                        metadatas=metadatas,
+                        ids=ids
+                    )
+                    embeddings, docs, metadatas, ids = [], [], [], []
+                    print(f"Inserted HF text batch up to index {i}")
                     
-                    emb = self.embed_medical_text(content)
-                    
-                    embeddings.append(emb)
-                    docs.append(content)
-                    metadatas.append({
-                        "source": "hf_medical_train",
-                        "type": "text"
-                    })
-                    ids.append(f"text_hf_{i}")
-                    
-                    if len(embeddings) >= 50:
-                        self.text_collection.add(
-                            embeddings=embeddings,
-                            documents=docs,
-                            metadatas=metadatas,
-                            ids=ids
-                        )
-                        embeddings, docs, metadatas, ids = [], [], [], []
-                        print(f"Inserted HF text batch up to index {i}")
-                        
-                except Exception as e:
-                    print(f"Failed to process line {i}: {e}")
+            except Exception as e:
+                print(f"Failed to process record {i}: {e}")
 
         if embeddings:
             self.text_collection.add(

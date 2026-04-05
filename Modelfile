@@ -2,7 +2,7 @@
 # This preserves vision support AND your fine-tuning.
 # To use: convert your LoRA adapter to GGUF, then uncomment the ADAPTER line.
 FROM gemma4:e4b
-# ADAPTER ./gemma4-medical-adapter.gguf
+ADAPTER ./gemma4-medical-adapter.gguf
 
 # Option B: Use your merged text-only GGUF (no vision support)
 # FROM ./gemma4-medical-q8.gguf

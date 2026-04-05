@@ -32,11 +32,24 @@ The backend contains the API server as well as scripts to fine-tune the Gemma 4 
    HF_TOKEN=your_huggingface_token
    ```
 
-**Gemma Medical Model Folder:**
+**Gemma Medical Model & Vector DB Setup (Required):**
 
-If you need the prepared `gemma-medical` model files, use the Google Drive folder below. This folder is intended to store the exported model artifacts and any related checkpoints required to run or share the medical-tuned model outside the repository.
+The fine-tuned LoRA adapter and the pre-computed Vector DB (`chroma_db`) are too large for GitHub, so they are hosted on Google Drive. You **must** download them before running the backend.
 
-- Google Drive folder: `https://drive.google.com/drive/folders/1ncAt94fa6tCLrPJiKRmfrpn4JqV1z98F?usp=sharing`
+1. Download the model adapter and database from the Google Drive folder:
+   - 📁 **[Google Drive – Gemma Medical Model & Chroma DB](https://drive.google.com/drive/folders/1ncAt94fa6tCLrPJiKRmfrpn4JqV1z98F?usp=sharing)**
+2. Place the downloaded `gemma4-medical-adapter.gguf` file in the **root** of the repository (next to the `Modelfile`).
+3. Place the downloaded `chroma_db` folder inside the `backend/` directory (`backend/chroma_db`).
+4. Make sure you have [Ollama](https://ollama.com/) installed, then pull the base model and create the fine-tuned model:
+   ```bash
+   ollama pull gemma4:e4b
+   ollama create gemma4-medical -f Modelfile
+   ```
+5. Verify the model is available:
+   ```bash
+   ollama list
+   ```
+   You should see `gemma4-medical` in the output.
 
 **Running the API Server:**
 ```bash
@@ -70,12 +83,13 @@ Instead of relying on external services or massive embedding models, it splits t
 - **`SigLIP` (Image Tower):** A multimodal model that embeds the 2k+ medical images from the pipeline, allowing retrieval of reference images via text symptoms.
 - **`PubMedBERT` (Text Tower):** A tiny but clinically accurate model that embeds the HuggingFace medical facts dataset.
 
-*To pre-compute the vector database before a demo (Requires `pipeline.py` to be run first):*
+*To pre-compute the vector database from scratch (Skip this if you downloaded `chroma_db` from Google Drive):*
+Requires `pipeline.py` to be run completely first.
 ```bash
 cd backend
 python rag.py --ingest-images --ingest-hf
 ```
-This generates a `chroma_db` folder. You can commit/share this folder so other machines (like a Snapdragon laptop) can run the RAG instantly without needing to generate embeddings.
+This generates the `chroma_db` folder locally. You can commit/share this folder so other machines (like a Snapdragon laptop) can run the RAG instantly without needing to calculate embeddings.
 
 ### 2. Frontend
 
@@ -107,16 +121,25 @@ Fine-tuning the model and generating the vector database were performed locally 
 | RAM | 32 GB |
 | GPU | NVIDIA GeForce RTX 5070 Ti (16 GB VRAM) |
 
-## Tools and Frameworks Used
+## Tools, Frameworks, and Authors
 
-- **[FastAPI](https://fastapi.tiangolo.com/)**: Fast, high-performance web framework used for the backend API.
-- **[Uvicorn](https://www.uvicorn.org/)**: ASGI web server implementation for Python.
-- **[React](https://react.dev/)**: JavaScript library for building the frontend user interfaces.
-- **[Vite](https://vitejs.dev/)**: Next-generation frontend tooling used for fast compilation and serving.
-- **[Tailwind CSS](https://tailwindcss.com/)**: Utility-first CSS framework for styling the frontend.
-- **[Radix UI](https://www.radix-ui.com/)**: Unstyled, accessible UI components used in the frontend.
-- **[Hugging Face Transformers](https://huggingface.co/docs/transformers/index)**: Used to load and format the model pipeline.
-- **[PEFT (Parameter-Efficient Fine-Tuning)](https://huggingface.co/docs/peft/index)**: Used for setting up the LoRA adapters for efficient fine-tuning.
-- **[TRL (Transformer Reinforcement Learning)](https://huggingface.co/docs/trl/index)**: Library containing the robust `SFTTrainer` used for Supervised Fine-Tuning.
-- **[BitsAndBytes](https://github.com/TimDettmers/bitsandbytes)**: Used for aggressive 4-bit quantization (NF4) to make local fine-tuning possible on consumer hardware.
-- **[Gemma](https://github.com/google/gemma)**: The open-weights foundation model from Google that powers the medical emergency reasoning pipeline.
+- **[FastAPI](https://fastapi.tiangolo.com/)**: Fast, high-performance web framework used for the backend API. *Created by Sebastián Ramírez (tiangolo).*
+- **[Uvicorn](https://www.uvicorn.org/)**: ASGI web server implementation for Python. *Created by Tom Christie / Encode OSS.*
+- **[React](https://react.dev/)**: JavaScript library for building the frontend user interfaces. *Created by Meta / Facebook.*
+- **[Vite](https://vitejs.dev/)**: Next-generation frontend tooling used for fast compilation and serving. *Created by Evan You.*
+- **[Tailwind CSS](https://tailwindcss.com/)**: Utility-first CSS framework for styling the frontend. *Created by Adam Wathan.*
+- **[Radix UI](https://www.radix-ui.com/)**: Unstyled, accessible UI components used in the frontend. *Created by Modulz / WorkOS.*
+- **[Hugging Face Ecosystem](https://huggingface.co/)**: Includes Transformers, PEFT, TRL, and Datasets used to load and fine-tune models. *Created by the Hugging Face Team.*
+- **[BitsAndBytes](https://github.com/TimDettmers/bitsandbytes)**: Aggressive 4-bit quantization library (NF4). *Created by Tim Dettmers.*
+- **[SentenceTransformers](https://sbert.net/)**: Python framework for state-of-the-art text and image embeddings. *Created by Nils Reimers and UKPLab.*
+- **[SentencePiece](https://github.com/google/sentencepiece)**: Unsupervised text tokenizer for neural network-based text generation. *Created by Taku Kudo and John Richardson (Google).*
+
+## Models and Datasets Acknowledgments
+
+The sophisticated local processing of this application is only possible thanks to the open-sourcing of several state-of-the-art models and datasets:
+
+- **[Gemma](https://github.com/google/gemma)**: The open-weights foundation model that powers the medical emergency reasoning pipeline. *Created by Google DeepMind.*
+- **[CLIP](https://openai.com/research/clip)** (`sentence-transformers/clip-ViT-B-32`): Multimodal image-text embedding model used in the image tower of our RAG engine. *Created by OpenAI.*
+- **[PubMedBERT](https://pubmed.ncbi.nlm.nih.gov/34448356/)** (`pritamdeka/S-PubMedBert-MS-MARCO`): Clinical text embedding model used in the text tower of our RAG engine. *Original architecture created by Yu Gu et al. (Microsoft Research); fine-tuned MS-MARCO version uploaded by Pritam Deka.*
+- **[MedRescue Dataset](https://huggingface.co/datasets/ericrisco/medrescue)**: Clinical emergency response dataset used to feed medical facts into our RAG store. *Curated and published by Eric Risco.*
+- **Data Pipeline Integrations**: Sourced datasets and tooling are integrated through platforms provided by **[Kaggle](https://www.kaggle.com/)** *(Google)* and **[Roboflow](https://roboflow.com/)** *(Roboflow Inc.)*.

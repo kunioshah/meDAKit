@@ -52,4 +52,4 @@ gemma4-medical-q8.gguf
 llama.cpp/
 llama.cpp.zip
 offload/
-
+chroma.sqlite3
