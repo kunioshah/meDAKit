@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { Camera, Image, Mic } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
 import { Header } from './components/header';
 import { PlusBackground } from './components/plus-background';
 
@@ -9,7 +8,6 @@ export default function MobilePage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [generatedText, setGeneratedText] = useState('');
 
   const addImage = (file: File) => {
     const reader = new FileReader();
@@ -31,18 +29,15 @@ export default function MobilePage() {
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
         <Header showConnect={false} showHamburger={false} />
 
-        <main className="flex-1 min-h-0 px-4 py-4 flex flex-col gap-3 max-w-lg mx-auto w-full">
+        <main className="flex-1 min-h-0 px-4 py-4 flex flex-col justify-end gap-3 max-w-lg mx-auto w-full">
 
           {/* Generated text output */}
           <div className="flex-1 min-h-0 bg-white/60 backdrop-blur-sm rounded-[24px] p-6 overflow-y-auto">
-            {generatedText
-              ? <p className="text-black leading-relaxed">{generatedText}</p>
-              : <p className="text-gray-400 text-center text-sm">Generated response will appear here</p>
-            }
+            <p className="text-gray-400 text-center text-sm">Generated response will appear here</p>
           </div>
 
           {/* Action cards */}
-          <div className="grid grid-cols-2 gap-4 shrink-0">
+          <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => cameraInputRef.current?.click()}
               className="relative bg-white/60 backdrop-blur-sm rounded-[24px] p-6 flex flex-col items-start justify-end h-36 overflow-hidden hover:bg-white/80 transition-colors text-left"
@@ -76,28 +71,20 @@ export default function MobilePage() {
             />
           </div>
 
-          {/* Thumbnail strip — only shown when images exist and no generated text */}
-          <AnimatePresence>
-            {images.length > 0 && !generatedText && (
-              <motion.div
-                className="flex gap-2 overflow-x-auto"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.35, ease: 'easeInOut' }}
-              >
-                {images.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentIndex(i)}
-                    className={`w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-colors ${i === currentIndex ? 'border-[#7ed957]' : 'border-transparent'}`}
-                  >
-                    <img src={img} className="w-full h-full object-cover" alt={`thumb-${i}`} />
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Thumbnail strip — only shown when images exist */}
+          {images.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto">
+              {images.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentIndex(i)}
+                  className={`w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-colors ${i === currentIndex ? 'border-[#7ed957]' : 'border-transparent'}`}
+                >
+                  <img src={img} className="w-full h-full object-cover" alt={`thumb-${i}`} />
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Text input + Send */}
           <div className="flex gap-3 items-stretch">
@@ -117,7 +104,7 @@ export default function MobilePage() {
             </div>
 
             <button
-              className="bg-[#7ed957] hover:bg-[#6ec847] text-black rounded-[24px] px-4 min-w-14 flex items-center justify-center transition-colors"
+              className="bg-[#7ed957] hover:bg-[#6ec847] text-black rounded-[24px] px-4 min-h-36 min-w-14 flex items-center justify-center transition-colors"
               style={{ writingMode: 'vertical-rl' }}
             >
               <span className="font-semibold tracking-widest text-sm">SEND</span>
