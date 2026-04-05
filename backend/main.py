@@ -196,12 +196,10 @@ def generate_patient_id() -> str:
 class PatientLoginRequest(BaseModel):
     patient_id: str
 
-class ConversationCreateRequest(BaseModel):
-    topic: str
-
-class MessageCreateRequest(BaseModel):
-    role: str
-    content: str
+class ConversationEntryRequest(BaseModel):
+    text: Optional[str] = None
+    images: Optional[list[str]] = None  # base64 data URLs
+    response: Optional[str] = None
 
 
 @app.get("/api/patients")
@@ -296,103 +294,63 @@ def patient_login(req: PatientLoginRequest):
 @app.get("/api/patients/{patient_id}/conversations")
 def get_conversations(patient_id: str):
     patient_id = patient_id.upper()
-    patient_dir = os.path.join(DATA_DIR, patient_id)
-    conv_path = os.path.join(patient_dir, "conversations.json")
-    
+    conv_path = os.path.join(DATA_DIR, patient_id, "conversations.json")
     if not os.path.exists(conv_path):
         raise HTTPException(status_code=404, detail="Patient not found")
-        
     with open(conv_path, "r") as f:
         data = json.load(f)
-        
-    # Sort by timestamp descending
-    convs = sorted(data.get("conversations", []), key=lambda c: c.get("last_updated", ""), reverse=True)
+    convs = sorted(data.get("conversations", []), key=lambda c: c.get("timestamp", ""), reverse=True)
     return {"conversations": convs}
 
 
 @app.post("/api/patients/{patient_id}/conversations")
-def start_conversation(patient_id: str, req: ConversationCreateRequest):
+def add_conversation_entry(patient_id: str, req: ConversationEntryRequest):
+    """Record a single exchange: timestamp, text, images, response."""
     patient_id = patient_id.upper()
-    patient_dir = os.path.join(DATA_DIR, patient_id)
-    conv_path = os.path.join(patient_dir, "conversations.json")
-    
+    conv_path = os.path.join(DATA_DIR, patient_id, "conversations.json")
     if not os.path.exists(conv_path):
         raise HTTPException(status_code=404, detail="Patient not found")
-        
     with open(conv_path, "r") as f:
         data = json.load(f)
-        
-    now = datetime.now(timezone.utc).isoformat()
-    conv_id = str(uuid.uuid4())
-    
-    new_conv = {
-        "id": conv_id,
-        "topic": req.topic,
-        "created_at": now,
-        "last_updated": now,
-        "messages": []
+    entry = {
+        "id": str(uuid.uuid4()),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "text": req.text or "",
+        "images": req.images or [],
+        "response": req.response or "",
     }
-    
-    data["conversations"].append(new_conv)
-    
+    data.setdefault("conversations", []).append(entry)
     with open(conv_path, "w") as f:
         json.dump(data, f, indent=2)
-        
-    return new_conv
+    return entry
 
 
-@app.get("/api/patients/{patient_id}/conversations/{conversation_id}")
-def get_conversation(patient_id: str, conversation_id: str):
+@app.get("/api/patients/{patient_id}/conversations/{entry_id}")
+def get_conversation_entry(patient_id: str, entry_id: str):
     patient_id = patient_id.upper()
-    patient_dir = os.path.join(DATA_DIR, patient_id)
-    conv_path = os.path.join(patient_dir, "conversations.json")
-    
+    conv_path = os.path.join(DATA_DIR, patient_id, "conversations.json")
     if not os.path.exists(conv_path):
         raise HTTPException(status_code=404, detail="Patient not found")
-        
     with open(conv_path, "r") as f:
         data = json.load(f)
-        
-    for conv in data.get("conversations", []):
-        if conv["id"] == conversation_id:
-            return conv
-            
-    raise HTTPException(status_code=404, detail="Conversation not found")
+    for entry in data.get("conversations", []):
+        if entry["id"] == entry_id:
+            return entry
+    raise HTTPException(status_code=404, detail="Entry not found")
 
 
-@app.post("/api/patients/{patient_id}/conversations/{conversation_id}/messages")
-def add_message(patient_id: str, conversation_id: str, req: MessageCreateRequest):
+@app.delete("/api/patients/{patient_id}/conversations/{entry_id}")
+def delete_conversation_entry(patient_id: str, entry_id: str):
     patient_id = patient_id.upper()
-    patient_dir = os.path.join(DATA_DIR, patient_id)
-    conv_path = os.path.join(patient_dir, "conversations.json")
-    
+    conv_path = os.path.join(DATA_DIR, patient_id, "conversations.json")
     if not os.path.exists(conv_path):
         raise HTTPException(status_code=404, detail="Patient not found")
-        
-    # Read everything and lock logic implicitly by single thread request - good enough for simple local system
     with open(conv_path, "r") as f:
         data = json.load(f)
-        
-    found = False
-    now = datetime.now(timezone.utc).isoformat()
-    for conv in data.get("conversations", []):
-        if conv["id"] == conversation_id:
-            msg = {
-                "role": req.role,
-                "content": req.content,
-                "timestamp": now
-            }
-            if "messages" not in conv:
-                conv["messages"] = []
-            conv["messages"].append(msg)
-            conv["last_updated"] = now
-            found = True
-            break
-            
-    if not found:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-        
+    original = data.get("conversations", [])
+    data["conversations"] = [e for e in original if e["id"] != entry_id]
+    if len(data["conversations"]) == len(original):
+        raise HTTPException(status_code=404, detail="Entry not found")
     with open(conv_path, "w") as f:
         json.dump(data, f, indent=2)
-        
-    return {"status": "ok", "message": msg}
+    return {"status": "ok"}
