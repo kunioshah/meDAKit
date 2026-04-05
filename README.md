@@ -23,11 +23,11 @@ The backend contains the API server as well as scripts to fine-tune the Gemma 4 
    # On macOS/Linux:
    source venv/bin/activate
    ```
-3. Install the dependencies:
+3. Install the unified dependencies from the root directory:
    ```bash
-   pip install -r requirements.txt
+   pip install -r ../requirements.txt
    ```
-4. If you plan to run the fine-tuning script, you will need a `.env` file with your Hugging Face token (since Gemma is a gated model):
+4. If you plan to run the fine-tuning script, you will need a `.env` file in the root with your Hugging Face token (since Gemma is a gated model):
    ```env
    HF_TOKEN=your_huggingface_token
    ```
@@ -50,11 +50,9 @@ The project includes a standalone data extraction pipeline to download Kaggle, R
    ```bash
    cd backend/data_pipeline
    ```
-2. Set up your API Keys: Copy the `.env.example` file to `.env` and fill in your Kaggle, Roboflow, and Hugging Face tokens.
-3. Install the specific data pipeline dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+2. The script will automatically load the required API keys (KAGGLE_DATASETS, ROBOFLOW_DATASETS, etc.) from the `.env` file at the root of the project.
+3. The dependencies are already included in the unified root `requirements.txt`.
+
 4. Run the stream & purge pipeline script:
    ```bash
    python pipeline.py
