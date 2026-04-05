@@ -119,3 +119,8 @@ The sophisticated local processing of this application is only possible thanks t
 - **[PubMedBERT](https://pubmed.ncbi.nlm.nih.gov/34448356/)** (`pritamdeka/S-PubMedBert-MS-MARCO`): Clinical text embedding model used in the text tower of our RAG engine. *Original architecture created by Yu Gu et al. (Microsoft Research); fine-tuned MS-MARCO version uploaded by Pritam Deka.*
 - **[MedRescue Dataset](https://huggingface.co/datasets/ericrisco/medrescue)**: Clinical emergency response dataset used to feed medical facts into our RAG store. *Curated and published by Eric Risco.*
 - **Data Pipeline Integrations**: Sourced datasets and tooling are integrated through platforms provided by **[Kaggle](https://www.kaggle.com/)** *(Google)* and **[Roboflow](https://roboflow.com/)** *(Roboflow Inc.)*.
+
+## Technologies We Made but Did Not Get to Utilize
+
+- **RAG System with Two Embedding Models**: We built a Retrieval-Augmented Generation pipeline using two specialized embedding models (SigLIP for images and PubMedBERT for text) to ground the LLM's responses in real medical data. While the vector database and retrieval logic were fully implemented, we were unable to integrate the RAG system into the final product within the hackathon timeframe.
+- **Fine-Tuned Gemma 4 Model**: We fine-tuned Google's Gemma 4 model on medical emergency data using QLoRA (4-bit quantization with LoRA adapters). However, Gemma 4 is too new to have stable LoRA support — the adapter export and inference pipeline broke due to incomplete upstream tooling, making the fine-tuned model unusable in production.
