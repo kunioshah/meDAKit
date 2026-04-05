@@ -121,20 +121,29 @@ export default function LandingPage() {
                 <div key={p.id} className="relative group">
                   <button
                     onClick={() => navigate(`/patient/${p.id}`)}
-                    className="w-full bg-white/60 backdrop-blur-sm rounded-[24px] p-8 text-left hover:bg-white/80 transition-colors shadow-sm"
+                    className="w-full h-60 bg-white/60 backdrop-blur-sm rounded-[24px] p-8 text-left hover:bg-white/80 transition-colors shadow-sm flex flex-col"
                   >
-                    <h2 className="text-3xl font-normal text-black mb-4">{p.name ?? p.id}</h2>
-                    <p className="text-sm text-gray-700 mb-1">
-                      Last Updated: {formatDate(p.last_updated ?? p.created_at)}
-                    </p>
-                    {p.severity && (
-                      <p className={`text-sm mb-1 ${severityColor(p.severity)}`}>
-                        Severity Level: {p.severity}
+                    <div className="flex items-baseline gap-3 mb-3 shrink-0">
+                      <h2 className={`font-normal text-black line-clamp-2 ${
+                        (p.name ?? p.id).length <= 15 ? 'text-3xl' :
+                        (p.name ?? p.id).length <= 22 ? 'text-2xl' :
+                        (p.name ?? p.id).length <= 30 ? 'text-xl' : 'text-lg'
+                      }`}>{p.name ?? p.id}</h2>
+                      <span className="text-sm text-gray-400 shrink-0">#{p.id}</span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto flex flex-col gap-1 min-h-0">
+                      <p className="text-sm text-gray-700">
+                        Last Updated: {formatDate(p.last_updated ?? p.created_at)}
                       </p>
-                    )}
-                    {p.injuries && (
-                      <p className="text-sm text-gray-700 mt-1">Injuries: {p.injuries}</p>
-                    )}
+                      {p.severity && (
+                        <p className={`text-sm ${severityColor(p.severity)}`}>
+                          Severity Level: {p.severity}
+                        </p>
+                      )}
+                      {p.injuries && (
+                        <p className="text-sm text-gray-700">Injuries: {p.injuries}</p>
+                      )}
+                    </div>
                   </button>
 
                   {/* Edit / Delete buttons */}
