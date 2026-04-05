@@ -1,9 +1,14 @@
 import re
 import subprocess
 import platform
-from typing import Optional
+import os
+import json
+import random
+import uuid
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -90,3 +95,179 @@ def post_phone_data(data: PhoneData):
     global _latest_phone_data
     _latest_phone_data = data.model_dump(exclude_none=True)
     return {"status": "ok"}
+
+
+# ── Patient Database ──────────────────────────────────────────────────────────
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "patients")
+
+def ensure_data_dir():
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+def generate_patient_id() -> str:
+    """Generate a random max 4-digit hex number, e.g., '1A3F'"""
+    # 0 to 65535 in hex is 0x0 to 0xFFFF
+    return format(random.randint(0, 0xFFFF), 'x').upper().zfill(4)
+
+class PatientLoginRequest(BaseModel):
+    patient_id: str
+
+class ConversationCreateRequest(BaseModel):
+    topic: str
+
+class MessageCreateRequest(BaseModel):
+    role: str
+    content: str
+
+
+@app.post("/api/patients/signup")
+def patient_signup(info: Dict[str, Any] = Body(...)):
+    ensure_data_dir()
+    
+    # Generate unique ID
+    attempts = 0
+    while True:
+        patient_id = generate_patient_id()
+        patient_dir = os.path.join(DATA_DIR, patient_id)
+        if not os.path.exists(patient_dir):
+            break
+        attempts += 1
+        if attempts > 1000:
+            raise HTTPException(status_code=500, detail="Database full or error generating ID")
+            
+    os.makedirs(patient_dir)
+    
+    # Save info
+    info["id"] = patient_id
+    info["created_at"] = datetime.now(timezone.utc).isoformat()
+    
+    info_path = os.path.join(patient_dir, "info.json")
+    with open(info_path, "w") as f:
+        json.dump(info, f, indent=2)
+        
+    # Start blank conversations index
+    conv_path = os.path.join(patient_dir, "conversations.json")
+    with open(conv_path, "w") as f:
+        json.dump({"conversations": []}, f, indent=2)
+        
+    return {"patient_id": patient_id}
+
+
+@app.post("/api/patients/login")
+def patient_login(req: PatientLoginRequest):
+    patient_id = req.patient_id.upper()
+    patient_dir = os.path.join(DATA_DIR, patient_id)
+    info_path = os.path.join(patient_dir, "info.json")
+    
+    if not os.path.exists(info_path):
+        raise HTTPException(status_code=404, detail="Patient not found")
+        
+    with open(info_path, "r") as f:
+        info = json.load(f)
+        
+    return {"status": "ok", "patient_info": info}
+
+
+@app.get("/api/patients/{patient_id}/conversations")
+def get_conversations(patient_id: str):
+    patient_id = patient_id.upper()
+    patient_dir = os.path.join(DATA_DIR, patient_id)
+    conv_path = os.path.join(patient_dir, "conversations.json")
+    
+    if not os.path.exists(conv_path):
+        raise HTTPException(status_code=404, detail="Patient not found")
+        
+    with open(conv_path, "r") as f:
+        data = json.load(f)
+        
+    # Sort by timestamp descending
+    convs = sorted(data.get("conversations", []), key=lambda c: c.get("last_updated", ""), reverse=True)
+    return {"conversations": convs}
+
+
+@app.post("/api/patients/{patient_id}/conversations")
+def start_conversation(patient_id: str, req: ConversationCreateRequest):
+    patient_id = patient_id.upper()
+    patient_dir = os.path.join(DATA_DIR, patient_id)
+    conv_path = os.path.join(patient_dir, "conversations.json")
+    
+    if not os.path.exists(conv_path):
+        raise HTTPException(status_code=404, detail="Patient not found")
+        
+    with open(conv_path, "r") as f:
+        data = json.load(f)
+        
+    now = datetime.now(timezone.utc).isoformat()
+    conv_id = str(uuid.uuid4())
+    
+    new_conv = {
+        "id": conv_id,
+        "topic": req.topic,
+        "created_at": now,
+        "last_updated": now,
+        "messages": []
+    }
+    
+    data["conversations"].append(new_conv)
+    
+    with open(conv_path, "w") as f:
+        json.dump(data, f, indent=2)
+        
+    return new_conv
+
+
+@app.get("/api/patients/{patient_id}/conversations/{conversation_id}")
+def get_conversation(patient_id: str, conversation_id: str):
+    patient_id = patient_id.upper()
+    patient_dir = os.path.join(DATA_DIR, patient_id)
+    conv_path = os.path.join(patient_dir, "conversations.json")
+    
+    if not os.path.exists(conv_path):
+        raise HTTPException(status_code=404, detail="Patient not found")
+        
+    with open(conv_path, "r") as f:
+        data = json.load(f)
+        
+    for conv in data.get("conversations", []):
+        if conv["id"] == conversation_id:
+            return conv
+            
+    raise HTTPException(status_code=404, detail="Conversation not found")
+
+
+@app.post("/api/patients/{patient_id}/conversations/{conversation_id}/messages")
+def add_message(patient_id: str, conversation_id: str, req: MessageCreateRequest):
+    patient_id = patient_id.upper()
+    patient_dir = os.path.join(DATA_DIR, patient_id)
+    conv_path = os.path.join(patient_dir, "conversations.json")
+    
+    if not os.path.exists(conv_path):
+        raise HTTPException(status_code=404, detail="Patient not found")
+        
+    # Read everything and lock logic implicitly by single thread request - good enough for simple local system
+    with open(conv_path, "r") as f:
+        data = json.load(f)
+        
+    found = False
+    now = datetime.now(timezone.utc).isoformat()
+    for conv in data.get("conversations", []):
+        if conv["id"] == conversation_id:
+            msg = {
+                "role": req.role,
+                "content": req.content,
+                "timestamp": now
+            }
+            if "messages" not in conv:
+                conv["messages"] = []
+            conv["messages"].append(msg)
+            conv["last_updated"] = now
+            found = True
+            break
+            
+    if not found:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+        
+    with open(conv_path, "w") as f:
+        json.dump(data, f, indent=2)
+        
+    return {"status": "ok", "message": msg}
