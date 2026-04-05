@@ -6,8 +6,29 @@ import { PatientInfoPanel } from './components/patient-info-panel';
 import { PlusBackground } from './components/plus-background';
 import { ConnectModal } from './components/ConnectModal';
 
+interface PatientInfo {
+  sex?: string;
+  age?: string;
+  medications?: string;
+  allergies?: string;
+  medical_history?: string;
+}
+
 export default function App() {
   const { id } = useParams<{ id: string }>();
+  const [patientInfo, setPatientInfo] = useState<PatientInfo | undefined>(undefined);
+
+  useEffect(() => {
+    if (!id) return;
+    fetch('/api/patients/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: id }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setPatientInfo(d.patient_info))
+      .catch(() => {});
+  }, [id]);
   const [medicalData, setMedicalData] = useState<{
     text?: string;
     images?: string[];
@@ -45,6 +66,8 @@ export default function App() {
       <PatientInfoPanel
         isOpen={isPatientPanelOpen}
         onClose={() => setIsPatientPanelOpen(false)}
+        patientId={id}
+        patientInfo={patientInfo}
       />
 
       <ConnectModal

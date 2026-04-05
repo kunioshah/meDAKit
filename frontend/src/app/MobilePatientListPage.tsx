@@ -36,6 +36,7 @@ export default function MobilePatientListPage() {
   // New patient modal
   const [newOpen, setNewOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newInfo, setNewInfo] = useState({ sex: '', age: '', medications: '', allergies: '', medical_history: '' });
   const [saving, setSaving] = useState(false);
 
   // Edit modal
@@ -66,9 +67,14 @@ export default function MobilePatientListPage() {
       const res = await fetch('/api/patients/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName, last_updated: new Date().toISOString() }),
+        body: JSON.stringify({ name: newName, last_updated: new Date().toISOString(), ...newInfo }),
       });
-      if (res.ok) { setNewName(''); setNewOpen(false); loadPatients(); }
+      if (res.ok) {
+        setNewName('');
+        setNewInfo({ sex: '', age: '', medications: '', allergies: '', medical_history: '' });
+        setNewOpen(false);
+        loadPatients();
+      }
     } finally { setSaving(false); }
   };
 
@@ -203,16 +209,65 @@ export default function MobilePatientListPage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <form onSubmit={handleCreate} className="p-6 space-y-4">
+              <form onSubmit={handleCreate} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                 <div>
-                  <label className="block text-sm text-gray-700 mb-1.5">Patient Name</label>
-                  <input type="text" required value={newName}
+                  <label className="block text-sm text-gray-700 mb-1.5">
+                    Patient Name <span className="text-red-500">*</span>
+                  </label>
+                  <input type="text" value={newName}
                     onChange={e => setNewName(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow"
                     placeholder="e.g. John Smith" />
                 </div>
-                <button type="submit" disabled={saving}
-                  className="w-full bg-[#7ed957] hover:bg-[#6ec847] disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-colors">
+
+                <details open className="group">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-600 hover:text-gray-800 list-none flex items-center justify-between select-none">
+                    Patient Information
+                    <span className="text-gray-400 group-open:rotate-180 transition-transform inline-block">▾</span>
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1.5">Sex</label>
+                        <input type="text" value={newInfo.sex}
+                          onChange={e => setNewInfo(f => ({ ...f, sex: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow"
+                          placeholder="e.g. Male" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1.5">Age</label>
+                        <input type="text" value={newInfo.age}
+                          onChange={e => setNewInfo(f => ({ ...f, age: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow"
+                          placeholder="e.g. 34" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1.5">Medications</label>
+                      <textarea rows={2} value={newInfo.medications}
+                        onChange={e => setNewInfo(f => ({ ...f, medications: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow resize-none"
+                        placeholder="e.g. Aspirin, Lisinopril" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1.5">Known Allergies</label>
+                      <input type="text" value={newInfo.allergies}
+                        onChange={e => setNewInfo(f => ({ ...f, allergies: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow"
+                        placeholder="e.g. Penicillin, Peanuts" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1.5">Medical History</label>
+                      <textarea rows={3} value={newInfo.medical_history}
+                        onChange={e => setNewInfo(f => ({ ...f, medical_history: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow resize-none"
+                        placeholder="e.g. Hypertension, Type 2 Diabetes" />
+                    </div>
+                  </div>
+                </details>
+
+                <button type="submit" disabled={saving || !newName.trim()}
+                  className="w-full bg-[#7ed957] hover:bg-[#6ec847] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors">
                   {saving ? 'Creating…' : 'Create Patient'}
                 </button>
               </form>
