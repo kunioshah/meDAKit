@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { X, Pencil, Trash2 } from 'lucide-react';
+import { Search, Pencil, Trash2, X } from 'lucide-react';
 import { Header } from './components/header';
 import { PlusBackground } from './components/plus-background';
 
@@ -27,10 +27,11 @@ function severityColor(severity?: string) {
   return 'text-gray-700';
 }
 
-export default function LandingPage() {
+export default function MobilePatientListPage() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
 
   // New patient modal
   const [newOpen, setNewOpen] = useState(false);
@@ -52,6 +53,12 @@ export default function LandingPage() {
 
   useEffect(() => { loadPatients(); }, []);
 
+  const filtered = patients.filter(p => {
+    if (!query.trim()) return true;
+    const q = query.trim().toLowerCase();
+    return (p.name ?? '').toLowerCase().includes(q) || p.id.toLowerCase().includes(q);
+  });
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -61,14 +68,8 @@ export default function LandingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName, last_updated: new Date().toISOString() }),
       });
-      if (res.ok) {
-        setNewName('');
-        setNewOpen(false);
-        loadPatients();
-      }
-    } finally {
-      setSaving(false);
-    }
+      if (res.ok) { setNewName(''); setNewOpen(false); loadPatients(); }
+    } finally { setSaving(false); }
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -81,17 +82,11 @@ export default function LandingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       });
-      if (res.ok) {
-        setEditPatient(null);
-        loadPatients();
-      }
-    } finally {
-      setEditSaving(false);
-    }
+      if (res.ok) { setEditPatient(null); loadPatients(); }
+    } finally { setEditSaving(false); }
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
+  const handleDelete = async (id: string) => {
     if (!confirm('Delete this patient? This cannot be undone.')) return;
     await fetch(`/api/patients/${id}`, { method: 'DELETE' });
     loadPatients();
@@ -103,35 +98,54 @@ export default function LandingPage() {
       <div className="relative z-10 flex flex-col flex-1">
         <Header logoOnly />
 
-        <main className="flex-1 max-w-[1100px] mx-auto w-full px-6 py-8">
-          <div className="flex justify-end mb-6">
-            <button onClick={() => setNewOpen(true)}
-              className="bg-[#7ed957] hover:bg-[#6ec847] text-white font-semibold px-6 py-3 rounded-full transition-colors">
-              + New Patient
+        <main className="flex-1 px-4 pt-2 pb-8 flex flex-col gap-4">
+          {/* Add button */}
+          <button
+            onClick={() => setNewOpen(true)}
+            className="w-full bg-[#7ed957] hover:bg-[#6ec847] text-white font-semibold py-3.5 rounded-full transition-colors text-base"
+          >
+            + New Patient
+          </button>
+
+          {/* Search bar */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by ID or name"
+              className="flex-1 bg-white/60 backdrop-blur-sm px-4 py-3 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow"
+            />
+            <button className="w-12 h-12 bg-white/60 backdrop-blur-sm hover:bg-white/80 rounded-2xl flex items-center justify-center transition-colors shrink-0">
+              <Search className="w-5 h-5 text-gray-600" />
             </button>
           </div>
 
+          {/* Patient list */}
           {loading ? (
-            <p className="text-gray-400 text-center mt-20">Loading patients…</p>
-          ) : patients.length === 0 ? (
-            <p className="text-gray-400 text-center mt-20">No patients on record yet.</p>
+            <p className="text-gray-400 text-center mt-10">Loading patients…</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-gray-400 text-center mt-10">
+              {query ? 'No patients match your search.' : 'No patients on record yet.'}
+            </p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {patients.map(p => (
-                <div key={p.id} className="relative group">
+            <div className="flex flex-col gap-4">
+              {filtered.map(p => (
+                <div key={p.id} className="bg-white/60 backdrop-blur-sm rounded-[24px] shadow-sm overflow-hidden">
+                  {/* Clickable card body */}
                   <button
-                    onClick={() => navigate(`/patient/${p.id}/session`)}
-                    className="w-full h-60 bg-white/60 backdrop-blur-sm rounded-[24px] p-8 text-left hover:bg-white/80 transition-colors shadow-sm flex flex-col"
+                    onClick={() => navigate(`/mobile/patient/${p.id}`)}
+                    className="w-full px-6 pt-6 pb-4 text-left hover:bg-white/40 transition-colors"
                   >
-                    <div className="flex items-baseline gap-3 mb-3 shrink-0">
-                      <h2 className={`font-normal text-black line-clamp-2 ${
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <h2 className={`font-normal text-black ${
                         (p.name ?? p.id).length <= 15 ? 'text-3xl' :
                         (p.name ?? p.id).length <= 22 ? 'text-2xl' :
                         (p.name ?? p.id).length <= 30 ? 'text-xl' : 'text-lg'
                       }`}>{p.name ?? p.id}</h2>
                       <span className="text-sm text-gray-400 shrink-0">#{p.id}</span>
                     </div>
-                    <div className="flex-1 overflow-y-auto flex flex-col gap-1 min-h-0">
+                    <div className="flex flex-col gap-0.5">
                       <p className="text-sm text-gray-700">
                         Last Updated: {formatDate(p.last_updated ?? p.created_at)}
                       </p>
@@ -146,21 +160,27 @@ export default function LandingPage() {
                     </div>
                   </button>
 
-                  {/* Edit / Delete buttons */}
-                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Divider */}
+                  <div className="border-t border-gray-200 mx-4" />
+
+                  {/* Edit / Delete row */}
+                  <div className="flex items-center gap-4 px-6 py-3">
                     <button
-                      onClick={e => { e.stopPropagation(); setEditPatient(p); setEditForm({ name: p.name ?? '', severity: p.severity ?? '', injuries: p.injuries ?? '' }); }}
-                      className="w-8 h-8 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-sm transition-colors"
-                      aria-label="Edit patient"
+                      onClick={() => {
+                        setEditPatient(p);
+                        setEditForm({ name: p.name ?? '', severity: p.severity ?? '', injuries: p.injuries ?? '' });
+                      }}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors py-1"
                     >
-                      <Pencil className="w-4 h-4 text-gray-600" />
+                      <Pencil className="w-5 h-5" />
+                      <span className="text-sm font-medium">Edit</span>
                     </button>
                     <button
-                      onClick={e => handleDelete(e, p.id)}
-                      className="w-8 h-8 bg-white/80 hover:bg-gray-100 rounded-full flex items-center justify-center shadow-sm transition-colors"
-                      aria-label="Delete patient"
+                      onClick={() => handleDelete(p.id)}
+                      className="flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors py-1"
                     >
-                      <Trash2 className="w-4 h-4 text-gray-500" />
+                      <Trash2 className="w-5 h-5" />
+                      <span className="text-sm font-medium">Delete</span>
                     </button>
                   </div>
                 </div>
@@ -174,7 +194,7 @@ export default function LandingPage() {
       {newOpen && (
         <>
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" onClick={() => setNewOpen(false)} />
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
               <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                 <h2 className="text-xl font-semibold">New Patient</h2>
@@ -205,7 +225,7 @@ export default function LandingPage() {
       {editPatient && (
         <>
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" onClick={() => setEditPatient(null)} />
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
               <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                 <h2 className="text-xl font-semibold">Edit Patient</h2>

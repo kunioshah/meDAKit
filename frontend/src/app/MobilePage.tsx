@@ -46,10 +46,11 @@ export default function MobilePage() {
 
   const hiddenInputs = (
     <>
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-        onChange={e => { e.target.files?.[0] && addImage(e.target.files[0]); setPlusMenuOpen(false); }} />
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-        onChange={e => { e.target.files?.[0] && addImage(e.target.files[0]); setPlusMenuOpen(false); }} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" multiple className="hidden"
+        onChange={e => { e.target.files && Array.from(e.target.files).forEach(addImage); setPlusMenuOpen(false); }} />
+      {/* No capture attr + explicit extensions: on iOS this opens the photo library directly, skipping the camera shortcut */}
+      <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.gif,.webp,.heic,.heif" multiple className="hidden"
+        onChange={e => { e.target.files && Array.from(e.target.files).forEach(addImage); setPlusMenuOpen(false); }} />
     </>
   );
 

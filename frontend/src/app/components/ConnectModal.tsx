@@ -5,11 +5,14 @@ import { QRCodeSVG } from 'qrcode.react';
 interface ConnectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onDone?: () => void;
+  /** If set, the app QR code links directly to that patient's mobile session */
+  patientId?: string;
 }
 
 type Phase = 'credentials' | 'qrcodes';
 
-export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
+export function ConnectModal({ isOpen, onClose, onDone, patientId }: ConnectModalProps) {
   const [phase, setPhase] = useState<Phase>('credentials');
   const [ssid, setSsid] = useState('MedScan');
   const [password, setPassword] = useState('medscan123');
@@ -25,7 +28,8 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
       const res = await fetch('/api/ip');
       if (!res.ok) throw new Error('Bad response');
       const data = await res.json();
-      setAppUrl(data.app_url);
+      const base = `http://${data.ip}:5173/mobile`;
+      setAppUrl(patientId ? `${base}/patient/${patientId}` : base);
       setPhase('qrcodes');
     } catch {
       setError('Could not reach the backend. Make sure FastAPI is running on port 8000.');
@@ -127,9 +131,17 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
                 </div>
               </div>
 
+              {onDone && (
+                <button
+                  onClick={onDone}
+                  className="mt-6 w-full bg-[#7ed957] hover:bg-[#6ec847] text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Done
+                </button>
+              )}
               <button
                 onClick={() => setPhase('credentials')}
-                className="mt-6 w-full text-sm text-gray-400 hover:text-gray-600 transition-colors"
+                className="mt-3 w-full text-sm text-gray-400 hover:text-gray-600 transition-colors"
               >
                 ← Change hotspot settings
               </button>
