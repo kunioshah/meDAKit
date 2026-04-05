@@ -44,6 +44,22 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
    python finetune.py
    ```
 
+**Data Pipeline:**
+The project includes a standalone data extraction pipeline to download Kaggle, Roboflow, and Hugging Face image datasets.
+1. Navigate to the data pipeline directory:
+   ```bash
+   cd backend/data_pipeline
+   ```
+2. Set up your API Keys: Copy the `.env.example` file to `.env` and fill in your Kaggle, Roboflow, and Hugging Face tokens.
+3. Install the specific data pipeline dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run the stream & purge pipeline script:
+   ```bash
+   python pipeline.py
+   ```
+
 ### 2. Frontend
 
 The frontend is a web app built using React and Vite.
