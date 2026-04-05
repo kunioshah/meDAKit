@@ -120,7 +120,7 @@ export default function LandingPage() {
               {patients.map(p => (
                 <div key={p.id} className="relative group">
                   <button
-                    onClick={() => navigate(`/patient/${p.id}`)}
+                    onClick={() => navigate(`/patient/${p.id}/session`)}
                     className="w-full h-60 bg-white/60 backdrop-blur-sm rounded-[24px] p-8 text-left hover:bg-white/80 transition-colors shadow-sm flex flex-col"
                   >
                     <div className="flex items-baseline gap-3 mb-3 shrink-0">

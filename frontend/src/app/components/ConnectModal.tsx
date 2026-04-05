@@ -5,11 +5,12 @@ import { QRCodeSVG } from 'qrcode.react';
 interface ConnectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onDone?: () => void;
 }
 
 type Phase = 'credentials' | 'qrcodes';
 
-export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
+export function ConnectModal({ isOpen, onClose, onDone }: ConnectModalProps) {
   const [phase, setPhase] = useState<Phase>('credentials');
   const [ssid, setSsid] = useState('MedScan');
   const [password, setPassword] = useState('medscan123');
@@ -127,9 +128,17 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
                 </div>
               </div>
 
+              {onDone && (
+                <button
+                  onClick={onDone}
+                  className="mt-6 w-full bg-[#7ed957] hover:bg-[#6ec847] text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Done
+                </button>
+              )}
               <button
                 onClick={() => setPhase('credentials')}
-                className="mt-6 w-full text-sm text-gray-400 hover:text-gray-600 transition-colors"
+                className="mt-3 w-full text-sm text-gray-400 hover:text-gray-600 transition-colors"
               >
                 ← Change hotspot settings
               </button>

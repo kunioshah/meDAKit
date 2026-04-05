@@ -14,9 +14,9 @@ export function Header({ onConnectToPhone, showConnect = true, showHamburger = t
 
   const logo = (
     <h1 className={`tracking-tight ${compact ? 'text-xl' : 'text-3xl'}`}>
-      <span className="text-black">ME</span>
+      <span className="text-black">Me</span>
       <span className="text-[#7ed957]">DAK</span>
-      <span className="text-black">IT</span>
+      <span className="text-black">it</span>
     </h1>
   );
 
