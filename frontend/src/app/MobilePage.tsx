@@ -5,35 +5,80 @@
  * with distinct responsive layouts. Features: take photo (camera capture),
  * upload multiple images from gallery (iOS-safe, no camera shortcut), text
  * input, and a generated response display box. On send, POSTs { text, images }
- * to /api/phone-data for the laptop to poll. After first send, transitions to a
+ * to /api/patients/:id/conversations. After first send, transitions to a
  * compact bar with a [+] menu for adding more photos.
  */
-import { useRef, useState } from 'react';
-import { Camera, Image, Mic, Plus, ArrowRight } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { useParams } from 'react-router';
+import { Camera, Image, Mic, Plus, ArrowRight, Bot, User } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Header } from './components/header';
 import { PlusBackground } from './components/plus-background';
 
+interface ConversationEntry {
+  id: string;
+  role: string;
+  timestamp: string;
+  text: string;
+  images?: string[];
+  severity?: string;
+  recommendation?: string;
+}
+
 export default function MobilePage() {
+  const { id } = useParams<{ id: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [generatedText, setGeneratedText] = useState('');
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const [hasSent, setHasSent] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [conversations, setConversations] = useState<ConversationEntry[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const pollConversations = async () => {
+      if (!id) return;
+      try {
+        const res = await fetch(`/api/patients/${id}/conversations`);
+        if (res.ok) {
+          const json = await res.json();
+          const sorted = (json.conversations || []).sort((a: any, b: any) => 
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+          if (sorted.length > 0) {
+             setHasSent(true);
+          }
+          setConversations(sorted);
+        }
+      } catch {}
+    };
+
+    pollConversations();
+    const timer = setInterval(pollConversations, 2000);
+    return () => clearInterval(timer);
+  }, [id]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [conversations]);
 
   const handleSend = async () => {
+    if (!id || (!inputText.trim() && images.length === 0)) return;
     setSending(true);
     setHasSent(true);
     try {
-      await fetch('/api/phone-data', {
+      await fetch(`/api/patients/${id}/conversations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: inputText, images }),
+        body: JSON.stringify({ role: 'user', text: inputText, images }),
       });
+      setInputText('');
+      setImages([]);
     } finally {
       setSending(false);
     }
@@ -58,7 +103,6 @@ export default function MobilePage() {
     <>
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" multiple className="hidden"
         onChange={e => { e.target.files && Array.from(e.target.files).forEach(addImage); setPlusMenuOpen(false); }} />
-      {/* No capture attr + explicit extensions: on iOS this opens the photo library directly, skipping the camera shortcut */}
       <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.gif,.webp,.heic,.heif" multiple className="hidden"
         onChange={e => { e.target.files && Array.from(e.target.files).forEach(addImage); setPlusMenuOpen(false); }} />
     </>
@@ -66,7 +110,7 @@ export default function MobilePage() {
 
   const portraitThumbnail = (
     <AnimatePresence>
-      {images.length > 0 && !generatedText && !hasSent && (
+      {images.length > 0 && !hasSent && (
         <motion.div
           className="flex gap-2 overflow-x-auto shrink-0"
           initial={{ opacity: 0, height: 0 }}
@@ -87,7 +131,7 @@ export default function MobilePage() {
 
   const landscapeThumbnail = (
     <AnimatePresence>
-      {images.length > 0 && !generatedText && !hasSent && (
+      {images.length > 0 && !hasSent && (
         <motion.div
           className="flex gap-2 overflow-x-auto shrink-0"
           initial={{ opacity: 0, height: 0 }}
@@ -107,11 +151,37 @@ export default function MobilePage() {
   );
 
   const genBox = (cls = '') => (
-    <div className={`bg-white/60 backdrop-blur-sm rounded-[24px] p-6 overflow-y-auto ${cls}`}>
-      {generatedText
-        ? <p className="text-black leading-relaxed">{generatedText}</p>
-        : <p className="text-gray-400 text-center text-sm">Generated response will appear here</p>
-      }
+    <div ref={scrollRef} className={`bg-white/60 backdrop-blur-sm rounded-[24px] p-6 overflow-y-auto flex flex-col gap-4 ${cls}`}>
+      {conversations.length === 0 ? (
+        <p className="text-gray-400 text-center text-sm m-auto">Generated response will appear here</p>
+      ) : (
+        conversations.map((msg) => {
+          const isAI = msg.role === 'ai';
+          return (
+            <div key={msg.id} className={`flex flex-col max-w-[90%] ${isAI ? 'self-start' : 'self-end'}`}>
+              <div className={`p-4 rounded-2xl ${isAI ? 'bg-white rounded-tl-sm text-black shadow-sm' : 'bg-[#7ed957] rounded-tr-sm text-black shadow-sm'}`}>
+                <div className="flex items-center gap-2 mb-1 opacity-60">
+                  {isAI ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                  <span className="text-xs font-semibold uppercase">{isAI ? 'AI Assistant' : 'Patient'}</span>
+                </div>
+                {msg.images && msg.images.length > 0 && (
+                  <div className="flex gap-2 flex-wrap mb-2">
+                    {msg.images.map((img, i) => (
+                      <img key={i} src={img} alt="attached" className="w-24 h-24 object-cover rounded-lg shadow-sm" />
+                    ))}
+                  </div>
+                )}
+                {msg.text && <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.text}</p>}
+                {msg.severity && (
+                  <div className="mt-2 text-xs font-medium bg-black/5 p-2 rounded">
+                    Severity: <span className="uppercase">{msg.severity}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 
@@ -213,6 +283,15 @@ export default function MobilePage() {
             <Plus className="w-5 h-5 text-gray-700" />
           </button>
 
+          {/* Show image thumbnails in compact bar if any are selected */}
+          {images.length > 0 && (
+             <div className="flex gap-1 overflow-x-auto max-w-[80px]">
+                {images.map((img, i) => (
+                  <img key={i} src={img} className="w-8 h-8 rounded shrink-0 object-cover" alt="thumb" />
+                ))}
+             </div>
+          )}
+
           {textInput('flex-1')}
           {arrowSendBtn}
         </motion.div>
@@ -303,6 +382,13 @@ export default function MobilePage() {
                   className="shrink-0 w-11 h-11 bg-white/60 hover:bg-white/80 rounded-full flex items-center justify-center transition-colors">
                   <Plus className="w-5 h-5 text-gray-700" />
                 </button>
+                {images.length > 0 && (
+                   <div className="flex gap-1 overflow-x-auto max-w-[80px]">
+                      {images.map((img, i) => (
+                        <img key={i} src={img} className="w-8 h-8 rounded shrink-0 object-cover" alt="thumb" />
+                      ))}
+                   </div>
+                )}
                 {arrowSendBtn}
               </div>
             ) : (

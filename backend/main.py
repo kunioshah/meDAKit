@@ -109,24 +109,33 @@ async def analyze(request: AnalyzeRequest):
     
     # 1. Construct the RAG-augmented prompt
     has_image = bool(request.image)
-    prompt = f"""You are an expert medical AI assistant. Analyze the patient's symptoms.
+    
+    system_prompt = f"""You are an expert medical AI assistant. Your task is to analyze the patient's symptoms and any provided medical images.
 
-{"An image has been provided. Carefully examine the image for any visible medical symptoms, injuries, skin conditions, or other clinically relevant observations." if has_image else "No image was provided."}
+{"CRITICAL: An image has been provided. You MUST carefully examine the provided image and explicitly describe any visible medical symptoms, injuries, skin conditions, or other clinically relevant visual observations." if has_image else "No image was provided. Rely solely on the provided text."}
 
-Patient Symptoms/Context:
+Always provide a structured analysis including:
+1. Observations (incorporating what you see in the image if provided, alongside the patient's text context).
+2. Preliminary Severity Assessment (explicitly state "Severity: Low", "Severity: Medium", or "Severity: High" in your response).
+3. Actionable Recommendations.
+
+Keep your response clear, clinical, and directly address the provided patient context."""
+
+    user_prompt = f"""Patient Symptoms/Context:
 {request.patient_context if request.patient_context else "None provided."}
 
 Relevant Clinical Facts (Retrieved from Medical Database):
 {text_context if text_context else "None retrieved."}
-
-Please provide a structured analysis including your observations{", incorporating what you see in the image," if has_image else ""} a preliminary severity assessment (low, medium, high), and actionable recommendations. Keep your response clear and clinical.
 """
+    if has_image:
+        user_prompt = "[IMAGE PROVIDED] Please analyze the attached image of the patient's condition.\n\n" + user_prompt
 
     # 2. Call local Ollama API (multimodal — sends image + text to the model)
     ollama_url = "http://localhost:11434/api/generate"
     payload = {
         "model": "gemma-medical",
-        "prompt": prompt,
+        "system": system_prompt,
+        "prompt": user_prompt,
         "stream": False,
     }
 
@@ -245,6 +254,7 @@ class ArduinoData(BaseModel):
     temperature: Optional[float] = None
 
 class ConversationEntryRequest(BaseModel):
+    role: Optional[str] = "user"
     text: Optional[str] = None
     images: Optional[list[str]] = None  # base64 data URLs
     response: Optional[str] = None
@@ -354,7 +364,7 @@ def get_conversations(patient_id: str):
 
 
 @app.post("/api/patients/{patient_id}/conversations")
-def add_conversation_entry(patient_id: str, req: ConversationEntryRequest):
+async def add_conversation_entry(patient_id: str, req: ConversationEntryRequest):
     """Record a single exchange: timestamp, text, images (saved to disk), response."""
     patient_id = patient_id.upper()
     patient_dir = os.path.join(DATA_DIR, patient_id)
@@ -388,18 +398,57 @@ def add_conversation_entry(patient_id: str, req: ConversationEntryRequest):
 
     with open(conv_path, "r") as f:
         data = json.load(f)
-    entry = {
+    
+    user_entry = {
         "id": str(uuid.uuid4()),
+        "role": req.role or "user",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "text": req.text or "",
         "images": image_paths,
-        "response": req.response or "",
+        "response": "",
         "arduino": req.arduino.model_dump() if req.arduino else {"heart_rate": None, "spo2": None, "temperature": None},
     }
-    data.setdefault("conversations", []).append(entry)
+    data.setdefault("conversations", []).append(user_entry)
     with open(conv_path, "w") as f:
         json.dump(data, f, indent=2)
-    return entry
+
+    if user_entry["role"] == "user":
+        # Call analyze internally to generate an AI response
+        image_b64 = req.images[0] if req.images and len(req.images) > 0 else ""
+        text_ctx = req.text or ""
+        
+        analyze_req = AnalyzeRequest(image=image_b64, patient_context=text_ctx)
+        try:
+            analyze_res = await analyze(analyze_req)
+            ai_text = analyze_res.get("analysis", "Failed to get AI response.")
+            severity = analyze_res.get("severity", "")
+            recommendation = analyze_res.get("recommendation", "")
+        except Exception as e:
+            ai_text = f"Failed to get AI response: {e}"
+            severity = "unknown"
+            recommendation = ""
+
+        ai_entry = {
+            "id": str(uuid.uuid4()),
+            "role": "ai",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "text": ai_text,
+            "images": [],
+            "severity": severity,
+            "recommendation": recommendation,
+            "arduino": {"heart_rate": None, "spo2": None, "temperature": None},
+        }
+        
+        # Read again just in case (though it shouldn't have changed in this async block)
+        with open(conv_path, "r") as f:
+            data = json.load(f)
+        data.setdefault("conversations", []).append(ai_entry)
+        with open(conv_path, "w") as f:
+            json.dump(data, f, indent=2)
+            
+        return {"user_entry": user_entry, "ai_entry": ai_entry}
+
+    return {"user_entry": user_entry}
 
 
 @app.get("/api/patients/{patient_id}/conversations/{entry_id}")

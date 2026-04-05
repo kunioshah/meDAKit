@@ -8,7 +8,17 @@
  * (heart_rate, spo2, temperature) to each submission as context for the model.
  */
 import { useRef, useState, useEffect } from 'react';
-import { Image, ArrowRight, X } from 'lucide-react';
+import { Image, ArrowRight, X, Bot, User } from 'lucide-react';
+
+interface ConversationEntry {
+  id: string;
+  role: string;
+  timestamp: string;
+  text: string;
+  images?: string[];
+  severity?: string;
+  recommendation?: string;
+}
 
 interface DataDisplayProps {
   data: {
@@ -22,23 +32,54 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
   const [inputText, setInputText] = useState('');
   const [inputImages, setInputImages] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
+  const [conversations, setConversations] = useState<ConversationEntry[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const [sensorData, setSensorData] = useState<{ heart_rate: number | null; spo2: number | null; temperature: number | null }>({
     heart_rate: null, spo2: null, temperature: null,
   });
 
   useEffect(() => {
-    const poll = async () => {
+    const pollSensor = async () => {
       try {
         const res = await fetch('/api/sensor-data');
         if (res.ok) setSensorData(await res.json());
       } catch {}
     };
-    poll();
-    const id = setInterval(poll, 2000);
-    return () => clearInterval(id);
-  }, []);
+    const pollConversations = async () => {
+      if (!patientId) return;
+      try {
+        const res = await fetch(`/api/patients/${patientId}/conversations`);
+        if (res.ok) {
+          const json = await res.json();
+          const sorted = (json.conversations || []).sort((a: any, b: any) => 
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+          setConversations(sorted);
+        }
+      } catch {}
+    };
+
+    pollSensor();
+    pollConversations();
+    const id1 = setInterval(pollSensor, 2000);
+    const id2 = setInterval(pollConversations, 2000);
+    return () => {
+      clearInterval(id1);
+      clearInterval(id2);
+    };
+  }, [patientId]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [conversations]);
+
+  useEffect(() => {
+    if (data.text && !inputText) setInputText(data.text);
+  }, [data.text]);
 
   const addImages = (files: FileList) => {
     Array.from(files).forEach(file => {
@@ -60,9 +101,9 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          role: 'user',
           text: inputText,
           images: inputImages,
-          response: '',
           arduino: sensorData,
         }),
       });
@@ -79,16 +120,41 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 gap-4">
-      {/* Output box */}
-      <div className="bg-white/60 backdrop-blur-sm rounded-[32px] p-8 flex-1 min-h-0 overflow-y-auto">
-        {data.text ? (
-          <p className="text-black leading-relaxed">{data.text}</p>
-        ) : (
+      {/* Output box (Chat Bubbles) */}
+      <div ref={scrollRef} className="bg-white/60 backdrop-blur-sm rounded-[32px] p-6 flex-1 min-h-0 overflow-y-auto flex flex-col gap-4">
+        {conversations.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-400 text-center">
               Enter medical information to receive medical advice
             </p>
           </div>
+        ) : (
+          conversations.map((msg) => {
+            const isAI = msg.role === 'ai';
+            return (
+              <div key={msg.id} className={`flex flex-col max-w-[80%] ${isAI ? 'self-start' : 'self-end'}`}>
+                <div className={`p-4 rounded-2xl ${isAI ? 'bg-white rounded-tl-sm text-black shadow-sm' : 'bg-[#7ed957] rounded-tr-sm text-black shadow-sm'}`}>
+                  <div className="flex items-center gap-2 mb-1 opacity-60">
+                    {isAI ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                    <span className="text-xs font-semibold uppercase">{isAI ? 'AI Assistant' : 'Patient'}</span>
+                  </div>
+                  {msg.images && msg.images.length > 0 && (
+                    <div className="flex gap-2 flex-wrap mb-2">
+                      {msg.images.map((img, i) => (
+                        <img key={i} src={img} alt="attached" className="w-32 h-32 object-cover rounded-lg shadow-sm" />
+                      ))}
+                    </div>
+                  )}
+                  {msg.text && <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.text}</p>}
+                  {msg.severity && (
+                    <div className="mt-2 text-xs font-medium bg-black/5 p-2 rounded">
+                      Severity: <span className="uppercase">{msg.severity}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
