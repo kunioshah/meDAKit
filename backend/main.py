@@ -133,7 +133,7 @@ Relevant Clinical Facts (Retrieved from Medical Database):
     # 2. Call local Ollama API (multimodal — sends image + text to the model)
     ollama_url = "http://localhost:11434/api/generate"
     payload = {
-        "model": "gemma-medical",
+        "model": "qwen3.5:4b",
         "system": system_prompt,
         "prompt": user_prompt,
         "stream": False,
@@ -141,11 +141,7 @@ Relevant Clinical Facts (Retrieved from Medical Database):
 
     # Pass the patient image to the vision-capable model
     if request.image:
-        # Strip data URL prefix if present (e.g., "data:image/png;base64,...")
-        img_data = request.image
-        if "," in img_data:
-            img_data = img_data.split(",", 1)[1]
-        payload["images"] = [img_data]
+        payload["images"] = [request.image]
     
     analysis_result = "Failed to reach Ollama. Please ensure Ollama is running and the model is pulled."
     severity = "medium"
@@ -163,8 +159,11 @@ Relevant Clinical Facts (Retrieved from Medical Database):
                 severity = "high"
             elif "severity: low" in lower_analysis or "low severity" in lower_analysis:
                 severity = "low"
+        else:
+            analysis_result = f"Ollama API returned an error: {response.status_code} - {response.text}"
     except Exception as e:
         print(f"Ollama API error: {e}")
+        analysis_result = f"Failed to reach Ollama. Error: {str(e)}"
 
     return {
         "analysis": analysis_result,

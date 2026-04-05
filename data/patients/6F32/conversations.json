@@ -53,6 +53,73 @@
         "spo2": null,
         "temperature": null
       }
+    },
+    {
+      "id": "f7a59ef0-a274-4455-a747-9e9a146030f5",
+      "role": "user",
+      "timestamp": "2026-04-05T14:59:14.530236+00:00",
+      "text": "my stomach is hurting a lot what should I do?",
+      "images": [],
+      "response": "",
+      "arduino": {
+        "heart_rate": null,
+        "spo2": null,
+        "temperature": null
+      }
+    },
+    {
+      "id": "0f9266d8-1bff-4dc2-94c8-b956831861cb",
+      "role": "user",
+      "timestamp": "2026-04-05T16:00:22.869690+00:00",
+      "text": "What is up with this symptom",
+      "images": [],
+      "response": "",
+      "arduino": {
+        "heart_rate": null,
+        "spo2": null,
+        "temperature": null
+      }
+    },
+    {
+      "id": "bcc20d13-3e4e-46b2-9dd7-ae1ccc43a9a9",
+      "role": "ai",
+      "timestamp": "2026-04-05T16:00:25.900704+00:00",
+      "text": "Failed to reach Ollama. Please ensure Ollama is running and the model is pulled.",
+      "images": [],
+      "severity": "medium",
+      "recommendation": "Consult a healthcare provider.",
+      "arduino": {
+        "heart_rate": null,
+        "spo2": null,
+        "temperature": null
+      }
+    },
+    {
+      "id": "e39f668a-ab33-4646-9434-4157107641e2",
+      "role": "user",
+      "timestamp": "2026-04-05T16:10:54.642564+00:00",
+      "text": "Hello",
+      "images": [],
+      "response": "",
+      "arduino": {
+        "heart_rate": null,
+        "spo2": null,
+        "temperature": null
+      }
+    },
+    {
+      "id": "e858af1e-6eef-4daa-acae-0b768a5a34a6",
+      "role": "ai",
+      "timestamp": "2026-04-05T16:10:58.551803+00:00",
+      "text": "Failed to reach Ollama. Please ensure Ollama is running and the model is pulled.",
+      "images": [],
+      "severity": "medium",
+      "recommendation": "Consult a healthcare provider.",
+      "arduino": {
+        "heart_rate": null,
+        "spo2": null,
+        "temperature": null
+      }
     }
   ]
 }

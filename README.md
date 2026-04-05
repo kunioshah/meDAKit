@@ -2,11 +2,11 @@
 
 ## Setup and Running
 
-The project consists of a Python FastAPI backend (which also contains the LLM fine-tuning scripts) and a Vite + React frontend.
+The project consists of a Python FastAPI backend and a Vite + React frontend.
 
 ### 1. Backend
 
-The backend contains the API server as well as scripts to fine-tune the Gemma 4 model for medical responses.
+The backend contains the API server and uses the Qwen 3.5 model for medical responses.
 
 **Prerequisites:** Python 3.10+
 
@@ -27,41 +27,18 @@ The backend contains the API server as well as scripts to fine-tune the Gemma 4 
    ```bash
    pip install -r ../requirements.txt
    ```
-4. If you plan to run the fine-tuning script, you will need a `.env` file in the root with your Hugging Face token (since Gemma is a gated model):
-   ```env
-   HF_TOKEN=your_huggingface_token
-   ```
 
-**Gemma Medical Model & Vector DB Setup (Required):**
+**Qwen Model Setup:**
 
-The fine-tuned LoRA adapter and the pre-computed Vector DB (`chroma_db`) are too large for GitHub, so they are hosted on Google Drive. You **must** download them before running the backend.
-
-1. Download the model adapter and database from the Google Drive folder:
-   - 📁 **[Google Drive – Gemma Medical Model & Chroma DB](https://drive.google.com/drive/folders/1ncAt94fa6tCLrPJiKRmfrpn4JqV1z98F?usp=sharing)**
-2. Place the downloaded `gemma4-medical-adapter.gguf` file in the **root** of the repository (next to the `Modelfile`).
-3. Place the downloaded `chroma_db` folder inside the `backend/` directory (`backend/chroma_db`).
-4. Make sure you have [Ollama](https://ollama.com/) installed, then pull the base model and create the fine-tuned model:
-   ```bash
-   ollama pull gemma4:e4b
-   ollama create gemma4-medical -f Modelfile
-   ```
-5. Verify the model is available:
-   ```bash
-   ollama list
-   ```
-   You should see `gemma4-medical` in the output.
+Make sure you have [Ollama](https://ollama.com/) installed, then pull the base model:
+```bash
+ollama pull qwen3.5:4b
+```
 
 **Running the API Server:**
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
-
-**Running Fine-Tuning:**
-1. Ensure your system meets the requirements (e.g., CUDA-compatible NVIDIA GPU with sufficient VRAM for 4-bit quantization).
-2. Run the finetuning script:
-   ```bash
-   python finetune.py
-   ```
 
 **Data Pipeline:**
 The project includes a standalone data extraction pipeline to download Kaggle, Roboflow, and Hugging Face image datasets.
@@ -83,7 +60,7 @@ Instead of relying on external services or massive embedding models, it splits t
 - **`SigLIP` (Image Tower):** A multimodal model that embeds the 2k+ medical images from the pipeline, allowing retrieval of reference images via text symptoms.
 - **`PubMedBERT` (Text Tower):** A tiny but clinically accurate model that embeds the HuggingFace medical facts dataset.
 
-*To pre-compute the vector database from scratch (Skip this if you downloaded `chroma_db` from Google Drive):*
+*To pre-compute the vector database from scratch:*
 Requires `pipeline.py` to be run completely first.
 ```bash
 cd backend
@@ -113,7 +90,7 @@ The frontend is a web app built using React and Vite.
 
 ## Hardware Used
 
-Fine-tuning the model and generating the vector database were performed locally on the following system:
+Generating the vector database was performed locally on the following system:
 
 | Component | Specification |
 |-----------|---------------|
@@ -130,7 +107,6 @@ Fine-tuning the model and generating the vector database were performed locally 
 - **[Tailwind CSS](https://tailwindcss.com/)**: Utility-first CSS framework for styling the frontend. *Created by Adam Wathan.*
 - **[Radix UI](https://www.radix-ui.com/)**: Unstyled, accessible UI components used in the frontend. *Created by Modulz / WorkOS.*
 - **[Hugging Face Ecosystem](https://huggingface.co/)**: Includes Transformers, PEFT, TRL, and Datasets used to load and fine-tune models. *Created by the Hugging Face Team.*
-- **[BitsAndBytes](https://github.com/TimDettmers/bitsandbytes)**: Aggressive 4-bit quantization library (NF4). *Created by Tim Dettmers.*
 - **[SentenceTransformers](https://sbert.net/)**: Python framework for state-of-the-art text and image embeddings. *Created by Nils Reimers and UKPLab.*
 - **[SentencePiece](https://github.com/google/sentencepiece)**: Unsupervised text tokenizer for neural network-based text generation. *Created by Taku Kudo and John Richardson (Google).*
 
@@ -138,7 +114,7 @@ Fine-tuning the model and generating the vector database were performed locally 
 
 The sophisticated local processing of this application is only possible thanks to the open-sourcing of several state-of-the-art models and datasets:
 
-- **[Gemma](https://github.com/google/gemma)**: The open-weights foundation model that powers the medical emergency reasoning pipeline. *Created by Google DeepMind.*
+- **[Qwen](https://github.com/QwenLM/Qwen)**: The open-weights foundation model that powers the medical emergency reasoning pipeline. *Created by Alibaba Cloud.*
 - **[CLIP](https://openai.com/research/clip)** (`sentence-transformers/clip-ViT-B-32`): Multimodal image-text embedding model used in the image tower of our RAG engine. *Created by OpenAI.*
 - **[PubMedBERT](https://pubmed.ncbi.nlm.nih.gov/34448356/)** (`pritamdeka/S-PubMedBert-MS-MARCO`): Clinical text embedding model used in the text tower of our RAG engine. *Original architecture created by Yu Gu et al. (Microsoft Research); fine-tuned MS-MARCO version uploaded by Pritam Deka.*
 - **[MedRescue Dataset](https://huggingface.co/datasets/ericrisco/medrescue)**: Clinical emergency response dataset used to feed medical facts into our RAG store. *Curated and published by Eric Risco.*
