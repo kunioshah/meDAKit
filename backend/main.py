@@ -110,16 +110,16 @@ async def analyze(request: AnalyzeRequest):
     # 1. Construct the RAG-augmented prompt
     has_image = bool(request.image)
     
-    system_prompt = f"""You are an expert medical AI assistant. Your task is to analyze the patient's symptoms and any provided medical images.
+    system_prompt = f"""You are an emergency medical assistant. Analyze symptoms and give direct, calm, actionable guidance.
 
-{"CRITICAL: An image has been provided. You MUST carefully examine the provided image and explicitly describe any visible medical symptoms, injuries, skin conditions, or other clinically relevant visual observations." if has_image else "No image was provided. Rely solely on the provided text."}
+{"An image has been provided. Examine it carefully for visible injuries, conditions, or symptoms and factor your observations into your response." if has_image else "No image provided. Use only the text description."}
 
-Always provide a structured analysis including:
-1. Observations (incorporating what you see in the image if provided, alongside the patient's text context).
-2. Preliminary Severity Assessment (explicitly state "Severity: Low", "Severity: Medium", or "Severity: High" in your response).
-3. Actionable Recommendations.
-
-Keep your response clear, clinical, and directly address the provided patient context."""
+Rules:
+- No markdown formatting, no asterisks, no bullet points, no headers.
+- Write in plain prose as if speaking calmly over the phone.
+- Be concise. Do not repeat yourself or add disclaimers.
+- State severity (Low, Medium, or High) and the most important action in the first sentence.
+- Follow with 2-3 brief, specific steps the patient should take right now."""
 
     user_prompt = f"""Patient Symptoms/Context:
 {request.patient_context if request.patient_context else "None provided."}
@@ -133,7 +133,7 @@ Relevant Clinical Facts (Retrieved from Medical Database):
     # 2. Call local Ollama API (multimodal — sends image + text to the model)
     ollama_url = "http://localhost:11434/api/generate"
     payload = {
-        "model": "gemma-medical",
+        "model": "qwen3.5:4b",
         "system": system_prompt,
         "prompt": user_prompt,
         "stream": False,
@@ -141,11 +141,7 @@ Relevant Clinical Facts (Retrieved from Medical Database):
 
     # Pass the patient image to the vision-capable model
     if request.image:
-        # Strip data URL prefix if present (e.g., "data:image/png;base64,...")
-        img_data = request.image
-        if "," in img_data:
-            img_data = img_data.split(",", 1)[1]
-        payload["images"] = [img_data]
+        payload["images"] = [request.image]
     
     analysis_result = "Failed to reach Ollama. Please ensure Ollama is running and the model is pulled."
     severity = "medium"
@@ -163,8 +159,11 @@ Relevant Clinical Facts (Retrieved from Medical Database):
                 severity = "high"
             elif "severity: low" in lower_analysis or "low severity" in lower_analysis:
                 severity = "low"
+        else:
+            analysis_result = f"Ollama API returned an error: {response.status_code} - {response.text}"
     except Exception as e:
         print(f"Ollama API error: {e}")
+        analysis_result = f"Failed to reach Ollama. Error: {str(e)}"
 
     return {
         "analysis": analysis_result,
