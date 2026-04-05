@@ -18,3 +18,4 @@ pillow
 tqdm
 chromadb
 sentence-transformers
+sentencepiece
