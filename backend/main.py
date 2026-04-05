@@ -1,3 +1,8 @@
+"""
+FastAPI application server for the medical diagnostic platform.
+Handles API endpoints for patient data management, real-time image analysis using Ollama, 
+and session persistence.
+"""
 import re
 import base64
 import subprocess

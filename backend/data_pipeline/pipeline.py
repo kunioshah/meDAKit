@@ -1,3 +1,8 @@
+"""
+Data ingestion pipeline for the medical diagnostic platform.
+Downloads, processes, and unifies medical image datasets from Kaggle, Roboflow, and HuggingFace.
+Implements a 'stream and purge' approach to manage disk space on local hardware.
+"""
 import os
 import shutil
 import json

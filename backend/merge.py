@@ -1,3 +1,7 @@
+"""
+Model merging script for combining LoRA adapters with the base LLM.
+Creates a standalone merged model suitable for deployment or GGUF conversion.
+"""
 import os
 import gc
 from pathlib import Path
