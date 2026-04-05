@@ -6,13 +6,17 @@ import glob
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent
+ENV_PATH = BASE_DIR.parent.parent / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
 
 # Attempt to load platform libraries
+# NOTE: kaggle must be imported AFTER load_dotenv because it authenticates
+# at import time using KAGGLE_USERNAME and KAGGLE_KEY env vars.
 try:
     import kaggle
     KAGGLE_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):
     KAGGLE_AVAILABLE = False
 
 try:
@@ -30,35 +34,36 @@ except ImportError:
 
 MAX_IMAGES_PER_DATASET = 500
 
-BASE_DIR = Path(__file__).resolve().parent
 UNIFIED_DIR = BASE_DIR / "unified_images"
 LABELS_FILE = BASE_DIR / "unified_labels.json"
-TEMP_DIR = BASE_DIR / "temp_raw"
+TEMP_DIR = BASE_DIR.parent.parent / "temp_raw"
+
+def make_long_path_safe(path):
+    """Convert path to an absolute string with Windows long-path prefix if needed."""
+    abs_path = str(Path(path).resolve())
+    if os.name == 'nt' and not abs_path.startswith('\\\\?\\'):
+        return '\\\\?\\' + abs_path
+    return abs_path
 
 
-# --- CONFIGURATION FROM LINKS ---
-KAGGLE_DATASETS = [
-    "shubhamgoel27/dermnet",
-    "ibrahimfateen/wound-classification",
-    "gunavenkatdoddi/eye-diseases-classification"
-]
+# --- CONFIGURATION FROM ENV ---
+def parse_roboflow_datasets(env_str):
+    if not env_str:
+        return []
+    envs = []
+    for item in env_str.split(","):
+        parts = item.split(":")
+        if len(parts) == 3:
+            envs.append((parts[0].strip(), parts[1].strip(), int(parts[2].strip())))
+    return envs
 
-ROBOFLOW_DATASETS = [
-    # Format: ("workspace", "project-name", version_int)
-    # Using generally accessible public project formats
-    ("binussss", "burn-wound-classification", 1),
-    ("ssk-r6ppk", "diabetic_ulcers", 1),
-    ("object-detection-ttfpu", "bug-bites", 1),
-    ("insect-bite-identifier-ceyst", "insect-bites", 1),
-    ("snake-bite", "snake-bite-detection", 1),
-    ("nabeel-alanbar-2vn5y", "bruise-x5paj", 1),
-    ("clinicvision", "basic-wound-classify-mpoys", 1)
-]
+_KAGGLE_ENV = os.environ.get("KAGGLE_DATASETS", "")
+_ROBOFLOW_ENV = os.environ.get("ROBOFLOW_DATASETS", "")
+_HF_ENV = os.environ.get("HF_DATASETS", "")
 
-HF_DATASETS = [
-    "Nagabu/HAM10000"
-    # Note: BI55/MedText is predominantly text-based so we skip standard image extraction for it
-]
+KAGGLE_DATASETS = [x.strip() for x in _KAGGLE_ENV.split(",")] if _KAGGLE_ENV else []
+ROBOFLOW_DATASETS = parse_roboflow_datasets(_ROBOFLOW_ENV)
+HF_DATASETS = [x.strip() for x in _HF_ENV.split(",")] if _HF_ENV else []
 
 
 def setup():
@@ -70,8 +75,16 @@ def setup():
 
 def clean_temp():
     if TEMP_DIR.exists():
-        shutil.rmtree(TEMP_DIR)
+        shutil.rmtree(TEMP_DIR, ignore_errors=True)
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+def get_completed_sources():
+    """Return the set of source strings already recorded in unified_labels.json."""
+    if not LABELS_FILE.exists():
+        return set()
+    with open(LABELS_FILE, "r") as f:
+        data = json.load(f)
+    return {r["source"] for r in data if "source" in r}
 
 def append_records(records):
     with open(LABELS_FILE, "r") as f:
@@ -88,7 +101,14 @@ def process_kaggle():
         print("Skipping Kaggle: kaggle library not installed or configured.")
         return
 
+    completed = get_completed_sources()
+
     for ds in KAGGLE_DATASETS:
+        source_key = f"Kaggle: {ds}"
+        if source_key in completed:
+            print(f"\\n[Kaggle] Already downloaded {ds} — skipping.")
+            continue
+
         print(f"\\n[Kaggle] Downloading {ds}...")
         clean_temp()
         try:
@@ -115,7 +135,7 @@ def process_kaggle():
                 new_filename = f"kaggle_{ds.split('/')[-1]}_{img_path.name}"
                 new_path = UNIFIED_DIR / new_filename
                 
-                shutil.copy2(img_path, new_path)
+                shutil.copy2(make_long_path_safe(img_path), make_long_path_safe(new_path))
                 records.append({
                     "image_path": str(new_path.relative_to(BASE_DIR.parent)),
                     "source": f"Kaggle: {ds}",
@@ -142,14 +162,40 @@ def process_roboflow():
 
     rf = Roboflow(api_key=api_key)
     
+    completed = get_completed_sources()
+
     for workspace, project_name, version in ROBOFLOW_DATASETS:
+        source_key = f"Roboflow: {project_name}"
+        if source_key in completed:
+            print(f"\\n[Roboflow] Already downloaded {project_name} — skipping.")
+            continue
+
         print(f"\\n[Roboflow] Downloading {project_name}...")
         clean_temp()
-        os.chdir(TEMP_DIR) # Roboflow downloads into CWD
+        os.chdir(make_long_path_safe(str(TEMP_DIR))) # Roboflow downloads into CWD. Use long path to protect zip extraction
         try:
             project = rf.workspace(workspace).project(project_name)
-            dataset = project.version(version).download("folder") # folder format groups by class
-            
+
+            # Try "multiclass" first (works for detection/segmentation projects).
+            # If the project is a pure classification type, fall back to "folder".
+            dataset = None
+            for fmt in ["multiclass", "folder"]:
+                try:
+                    dataset = project.version(version).download(fmt)
+                    break
+                except Exception as fmt_err:
+                    err_str = str(fmt_err)
+                    if "invalid format" in err_str and fmt == "multiclass":
+                        print(f"  'multiclass' not supported for {project_name}, retrying with 'folder'...")
+                        continue
+                    raise  # Re-raise unexpected errors
+
+            if dataset is None:
+                print(f"Could not download {project_name} in any supported format — skipping.")
+                os.chdir(BASE_DIR)
+                clean_temp()
+                continue
+
             ds_path = Path(dataset.location)
             
             all_images = []
@@ -161,13 +207,18 @@ def process_roboflow():
             
             records = []
             for img_path in selected_images:
-                # In 'folder' export, parent directory is the class
+                # Parent directory is the class label in both "multiclass" and "folder" exports
                 condition_label = img_path.parent.name
+                if condition_label.lower() in ["train", "test", "val", "valid", "images"]:
+                    condition_label = img_path.parent.parent.name
                 
-                new_filename = f"rf_{project_name}_{img_path.name}"
+                # Truncate long filenames to avoid Windows MAX_PATH errors
+                stem = img_path.stem[:80]
+                safe_name = f"{stem}{img_path.suffix}"
+                new_filename = f"rf_{project_name}_{safe_name}"
                 new_path = UNIFIED_DIR / new_filename
                 
-                shutil.copy2(img_path, new_path)
+                shutil.copy2(make_long_path_safe(img_path), make_long_path_safe(new_path))
                 records.append({
                     "image_path": str(new_path.relative_to(BASE_DIR.parent)),
                     "source": f"Roboflow: {project_name}",
@@ -188,7 +239,14 @@ def process_huggingface():
         print("Skipping HuggingFace: datasets library not installed.")
         return
 
+    completed = get_completed_sources()
+
     for ds in HF_DATASETS:
+        source_key = f"HuggingFace: {ds}"
+        if source_key in completed:
+            print(f"\\n[HuggingFace] Already downloaded {ds} — skipping.")
+            continue
+
         print(f"\\n[HuggingFace] Processing {ds}...")
         try:
             # Load dataset in streaming mode so it doesn't download everything into cache at once
