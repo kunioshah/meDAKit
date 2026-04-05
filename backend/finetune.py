@@ -14,7 +14,6 @@ Usage:
 
 import argparse
 import gc
-import json
 import os
 import time
 from datetime import datetime
@@ -22,7 +21,6 @@ from pathlib import Path
 
 def _load_env(path=".env"):
     """Load .env file without requiring python-dotenv."""
-    from pathlib import Path
     env_file = Path(path)
     if not env_file.is_file():
         # Also check parent directory (if running from backend/)
@@ -39,7 +37,7 @@ _load_env()
 import torch
 from datasets import load_dataset
 from huggingface_hub import login
-from peft import AutoPeftModelForCausalLM, LoraConfig, get_peft_model
+from peft import AutoPeftModelForCausalLM, LoraConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from trl import SFTConfig, SFTTrainer
 
@@ -47,7 +45,7 @@ from trl import SFTConfig, SFTTrainer
 def parse_args():
     parser = argparse.ArgumentParser(description="Fine-tune Gemma 4 E4B with QLoRA")
     parser.add_argument("--hf_token", type=str, default=None, help="HuggingFace token (or set HF_TOKEN env var)")
-    parser.add_argument("--model_id", type=str, default="google/gemma-3n-E4B-it")
+    parser.add_argument("--model_id", type=str, default="google/gemma-4-E4B-it")
     parser.add_argument("--train_data", type=str, default="data/medical_train.jsonl")
     parser.add_argument("--val_data", type=str, default="data/medical_val.jsonl")
     parser.add_argument("--output_dir", type=str, default="outputs")
@@ -135,7 +133,7 @@ def run_eval(model, tokenizer, label="MODEL"):
 def main():
     args = parse_args()
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    root = Path.cwd()
+    root = Path(__file__).resolve().parent.parent  # repo root, regardless of CWD
     output_dir = root / args.output_dir
     output_dir.mkdir(exist_ok=True)
 
@@ -200,8 +198,10 @@ def main():
     val_dataset = val_dataset.map(format_example)
 
     # ── QLoRA setup ───────────────────────────────────────────────────
-    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-    model.enable_input_require_grads()
+    # NOTE: We do NOT call get_peft_model() manually because Gemma 4 uses
+    # Gemma4ClippableLinear wrappers that PEFT cannot dispatch to directly.
+    # Instead, we pass peft_config to SFTTrainer which handles the LoRA
+    # injection correctly by targeting the underlying nn.Linear layers.
 
     peft_config = LoraConfig(
         r=args.lora_r,
@@ -209,11 +209,8 @@ def main():
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM",
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+        target_modules=["q_proj.linear", "k_proj.linear", "v_proj.linear", "o_proj.linear"],
     )
-
-    model = get_peft_model(model, peft_config)
-    model.print_trainable_parameters()
 
     # ── Training args ─────────────────────────────────────────────────
     adapter_dir = output_dir / "gemma4-medical-qlora"
@@ -233,11 +230,12 @@ def main():
         report_to="none",
         remove_unused_columns=False,
         dataset_text_field="text",
-        max_seq_length=args.max_seq_length,
+        max_length=args.max_seq_length,
         bf16=use_bf16,
         fp16=not use_bf16,
         optim="paged_adamw_8bit",
-        gradient_checkpointing=False,  # already enabled manually above
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         dataloader_pin_memory=False,   # reduce host RAM pressure on Windows
     )
 
@@ -252,6 +250,7 @@ def main():
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         processing_class=tokenizer,
+        peft_config=peft_config,
     )
     trainer.train()
 
@@ -312,6 +311,7 @@ def main():
             str(best_adapter),
             torch_dtype=torch.bfloat16,
             device_map="auto",
+            offload_folder="offload",
         )
         merged_model = merged_model.merge_and_unload()
 
