@@ -174,9 +174,9 @@ export function Header({
 
           {/* Right side */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm ${arduinoConnected ? 'bg-[#7ed957]/20 text-[#4a9e2a]' : 'bg-[#e5e5e5] text-gray-400'}`}>
+            <div className={`flex items-center gap-2 px-2 sm:px-3 py-2 rounded-full text-sm ${arduinoConnected ? 'bg-[#7ed957]/20 text-[#4a9e2a]' : 'bg-[#e5e5e5] text-gray-400'}`}>
               <Cpu className="w-4 h-4" />
-              <span>{arduinoConnected ? 'Arduino' : 'No Arduino'}</span>
+              <span className="hidden sm:inline">{arduinoConnected ? 'Arduino' : 'No Arduino'}</span>
             </div>
             {showConnect && (
               <button onClick={onConnectToPhone}

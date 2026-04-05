@@ -116,7 +116,7 @@ export default function MobilePage() {
 
   const portraitThumbnail = (
     <AnimatePresence>
-      {images.length > 0 && !hasSent && (
+      {images.length > 0 && (
         <motion.div
           className="flex gap-2 overflow-x-auto shrink-0"
           initial={{ opacity: 0, height: 0 }}
@@ -351,6 +351,7 @@ export default function MobilePage() {
               </div>
             </div>
           )}
+          {hasSent && portraitThumbnail}
           {portraitCompactBar}
         </main>
 
