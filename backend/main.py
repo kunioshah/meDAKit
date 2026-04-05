@@ -49,7 +49,7 @@ def get_ip():
     ip = get_hotspot_ip()
     return {
         "ip": ip,
-        "app_url": f"https://{ip}:5173/#/mobile",
+        "app_url": f"http://{ip}:5173/mobile",
     }
 
 
