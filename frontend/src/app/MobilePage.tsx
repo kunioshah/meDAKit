@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Camera, Image, Mic } from 'lucide-react';
+import { Camera, Image, Mic, Plus, ArrowRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Header } from './components/header';
 import { PlusBackground } from './components/plus-background';
@@ -12,6 +12,8 @@ export default function MobilePage() {
   const [generatedText, setGeneratedText] = useState('');
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [hasUploaded, setHasUploaded] = useState(false);
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
 
   const handleSend = async () => {
     setSending(true);
@@ -35,9 +37,21 @@ export default function MobilePage() {
         setCurrentIndex(next.length - 1);
         return next;
       });
+      setHasUploaded(true);
     };
     reader.readAsDataURL(file);
   };
+
+  // ── Shared pieces ──────────────────────────────────────────────────────────
+
+  const hiddenInputs = (
+    <>
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={e => { e.target.files?.[0] && addImage(e.target.files[0]); setPlusMenuOpen(false); }} />
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { e.target.files?.[0] && addImage(e.target.files[0]); setPlusMenuOpen(false); }} />
+    </>
+  );
 
   const thumbnail = (
     <AnimatePresence>
@@ -50,11 +64,8 @@ export default function MobilePage() {
           transition={{ duration: 0.35, ease: 'easeInOut' }}
         >
           {images.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentIndex(i)}
-              className={`w-10 h-10 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-colors ${i === currentIndex ? 'border-[#7ed957]' : 'border-transparent'}`}
-            >
+            <button key={i} onClick={() => setCurrentIndex(i)}
+              className={`w-10 h-10 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-colors ${i === currentIndex ? 'border-[#7ed957]' : 'border-transparent'}`}>
               <img src={img} className="w-full h-full object-cover" alt={`thumb-${i}`} />
             </button>
           ))}
@@ -63,26 +74,12 @@ export default function MobilePage() {
     </AnimatePresence>
   );
 
-  const actionCards = (landscape = false) => (
-    <div className="grid grid-cols-2 gap-3 shrink-0">
-      <button
-        onClick={() => cameraInputRef.current?.click()}
-        className={`relative bg-white/60 backdrop-blur-sm rounded-[20px] p-4 flex flex-col items-start justify-end overflow-hidden hover:bg-white/80 transition-colors text-left ${landscape ? 'h-20' : 'h-28'}`}
-      >
-        <Camera className="absolute right-3 top-3 w-10 h-10 text-gray-200" strokeWidth={1.2} />
-        <span className="text-xs font-medium text-black z-10">Take photo</span>
-      </button>
-      <button
-        onClick={() => fileInputRef.current?.click()}
-        className={`relative bg-white/60 backdrop-blur-sm rounded-[20px] p-4 flex flex-col items-start justify-end overflow-hidden hover:bg-white/80 transition-colors text-left ${landscape ? 'h-20' : 'h-28'}`}
-      >
-        <Image className="absolute right-3 top-3 w-10 h-10 text-gray-200" strokeWidth={1.2} />
-        <span className="text-xs font-medium text-black z-10">Upload image from device</span>
-      </button>
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-        onChange={e => e.target.files?.[0] && addImage(e.target.files[0])} />
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-        onChange={e => e.target.files?.[0] && addImage(e.target.files[0])} />
+  const genBox = (cls = '') => (
+    <div className={`bg-white/60 backdrop-blur-sm rounded-[24px] p-6 overflow-y-auto ${cls}`}>
+      {generatedText
+        ? <p className="text-black leading-relaxed">{generatedText}</p>
+        : <p className="text-gray-400 text-center text-sm">Generated response will appear here</p>
+      }
     </div>
   );
 
@@ -101,27 +98,117 @@ export default function MobilePage() {
   );
 
   const sendBtn = (cls = '') => (
-    <button
-      onClick={handleSend}
-      disabled={sending}
-      className={`shrink-0 bg-[#7ed957] hover:bg-[#6ec847] disabled:opacity-50 text-black rounded-[20px] font-semibold tracking-widest text-sm transition-colors ${cls}`}
-    >
-      {sending ? '...' : 'SEND'}
+    <button onClick={handleSend} disabled={sending}
+      className={`shrink-0 bg-[#7ed957] hover:bg-[#6ec847] disabled:opacity-50 text-black rounded-[20px] font-semibold tracking-widest text-sm transition-colors ${cls}`}>
+      SEND
     </button>
   );
 
-  const genBox = (cls = '') => (
-    <div className={`bg-white/60 backdrop-blur-sm rounded-[24px] p-6 overflow-y-auto ${cls}`}>
-      {generatedText
-        ? <p className="text-black leading-relaxed">{generatedText}</p>
-        : <p className="text-gray-400 text-center text-sm">Generated response will appear here</p>
-      }
+  const arrowSendBtn = (
+    <button onClick={handleSend} disabled={sending}
+      className="shrink-0 w-11 h-11 bg-[#7ed957] hover:bg-[#6ec847] disabled:opacity-50 text-black rounded-full flex items-center justify-center transition-colors">
+      <ArrowRight className="w-5 h-5" />
+    </button>
+  );
+
+  // ── Portrait-only pieces ───────────────────────────────────────────────────
+
+  // Large stacked cards shown before first upload
+  const portraitInitialCards = (
+    <AnimatePresence>
+      {!hasUploaded && (
+        <motion.div className="flex flex-col gap-3 shrink-0"
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}>
+          <button onClick={() => cameraInputRef.current?.click()}
+            className="w-full bg-white/60 backdrop-blur-sm rounded-[24px] py-8 flex flex-col items-center gap-3 hover:bg-white/80 transition-colors">
+            <div className="w-16 h-16 rounded-full bg-[#7ed957]/20 flex items-center justify-center">
+              <Camera className="w-8 h-8 text-[#7ed957]" strokeWidth={1.5} />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-black">Take photo</p>
+              <p className="text-xs text-gray-500 mt-0.5">Real-time diagnosis</p>
+            </div>
+          </button>
+
+          <button onClick={() => fileInputRef.current?.click()}
+            className="w-full bg-white/60 backdrop-blur-sm rounded-[24px] py-8 flex flex-col items-center gap-3 hover:bg-white/80 transition-colors">
+            <div className="w-16 h-16 rounded-full bg-[#7ed957]/20 flex items-center justify-center">
+              <Image className="w-8 h-8 text-[#7ed957]" strokeWidth={1.5} />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-black">Upload from device</p>
+              <p className="text-xs text-gray-500 mt-0.5">Upload from roll</p>
+            </div>
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  // Compact input bar shown after first upload
+  const portraitCompactBar = (
+    <AnimatePresence>
+      {hasUploaded && (
+        <motion.div className="shrink-0 flex items-center gap-2 relative"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}>
+
+          {/* Plus menu popup */}
+          <AnimatePresence>
+            {plusMenuOpen && (
+              <motion.div
+                className="absolute bottom-14 left-0 flex flex-col gap-2 z-10"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.2 }}>
+                <button onClick={() => cameraInputRef.current?.click()}
+                  className="flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-[14px] px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-white transition-colors">
+                  <Camera className="w-4 h-4 text-[#7ed957]" /> Take photo
+                </button>
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-[14px] px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-white transition-colors">
+                  <Image className="w-4 h-4 text-[#7ed957]" /> Upload image
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <button onClick={() => setPlusMenuOpen(o => !o)}
+            className="shrink-0 w-11 h-11 bg-white/60 hover:bg-white/80 rounded-full flex items-center justify-center transition-colors">
+            <Plus className="w-5 h-5 text-gray-700" />
+          </button>
+
+          {textInput('flex-1')}
+          {arrowSendBtn}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  // ── Landscape pieces ───────────────────────────────────────────────────────
+
+  const actionCards = (
+    <div className="grid grid-cols-2 gap-3 shrink-0">
+      <button onClick={() => cameraInputRef.current?.click()}
+        className="relative bg-white/60 backdrop-blur-sm rounded-[20px] p-4 flex flex-col items-start justify-end h-20 overflow-hidden hover:bg-white/80 transition-colors text-left">
+        <Camera className="absolute right-3 top-3 w-10 h-10 text-gray-200" strokeWidth={1.2} />
+        <span className="text-xs font-medium text-black z-10">Take photo</span>
+      </button>
+      <button onClick={() => fileInputRef.current?.click()}
+        className="relative bg-white/60 backdrop-blur-sm rounded-[20px] p-4 flex flex-col items-start justify-end h-20 overflow-hidden hover:bg-white/80 transition-colors text-left">
+        <Image className="absolute right-3 top-3 w-10 h-10 text-gray-200" strokeWidth={1.2} />
+        <span className="text-xs font-medium text-black z-10">Upload image from device</span>
+      </button>
     </div>
   );
 
   return (
     <div className="bg-[#f5f5f5] relative flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
       <PlusBackground />
+      {hiddenInputs}
 
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* Portrait header */}
@@ -136,18 +223,21 @@ export default function MobilePage() {
         {/* Portrait layout */}
         <main className="landscape:hidden flex-1 min-h-0 px-4 pb-4 flex flex-col gap-3">
           {genBox('flex-1 min-h-0')}
-          {actionCards()}
-          {thumbnail}
-          <div className="flex gap-3 items-stretch shrink-0">
-            {textInput('flex-1 min-h-0')}
-            {sendBtn('px-4 min-w-14 flex items-center justify-center')}
-          </div>
+          {portraitInitialCards}
+          {/* Standard input shown before first upload */}
+          {!hasUploaded && (
+            <div className="flex gap-3 items-stretch shrink-0">
+              {textInput('flex-1')}
+              {sendBtn('px-4 min-w-14 flex items-center justify-center')}
+            </div>
+          )}
+          {portraitCompactBar}
         </main>
 
         {/* Landscape layout */}
         <div className="portrait:hidden flex-1 min-h-0 flex gap-3 px-4 pb-4">
           <div className="flex flex-col gap-3 w-[260px] shrink-0">
-            {actionCards(true)}
+            {actionCards}
             {thumbnail}
             {textInput('flex-1 min-h-0')}
             {sendBtn('py-3 w-full')}
