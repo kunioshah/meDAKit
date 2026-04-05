@@ -5,6 +5,7 @@ import os
 import json
 import random
 import uuid
+import requests
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
@@ -60,6 +61,11 @@ def get_ip():
 
 # ── Analyze ──────────────────────────────────────────────────────────────────
 
+try:
+    from rag import rag_service
+except ImportError:
+    rag_service = None
+
 class AnalyzeRequest(BaseModel):
     image: str  # base64-encoded
     patient_context: Optional[str] = None
@@ -67,11 +73,89 @@ class AnalyzeRequest(BaseModel):
 
 @app.post("/api/analyze")
 async def analyze(request: AnalyzeRequest):
-    # TODO: forward to AnythingLLM RAG + Ollama (gemma3:4b)
+    # Retrieve context from Two-Tower RAG
+    text_context = ""
+    image_context = ""
+    
+    if rag_service and request.patient_context:
+        try:
+            # Query both databases simultaneously
+            hybrid_results = rag_service.retrieve_hybrid(query_text=request.patient_context, n_text=2, n_images=1)
+            
+            # Extract Text Facts
+            text_facts = hybrid_results.get("text_facts")
+            if text_facts and 'documents' in text_facts and len(text_facts['documents']) > 0:
+                text_context = "\n".join(text_facts['documents'][0])
+                
+            # Extract Image References
+            img_refs = hybrid_results.get("reference_images")
+            if img_refs and 'metadatas' in img_refs and len(img_refs['metadatas']) > 0:
+                # Get the path of the most similar image to the text query
+                image_metadata = img_refs['metadatas'][0]
+                if image_metadata:
+                    image_context = image_metadata[0].get("image_path", "")
+                    
+        except Exception as e:
+            print(f"RAG Retrieval failed: {e}")
+
+    # Forward request.image and text_context to Ollama
+    
+    # 1. Construct the RAG-augmented prompt
+    has_image = bool(request.image)
+    prompt = f"""You are an expert medical AI assistant. Analyze the patient's symptoms.
+
+{"An image has been provided. Carefully examine the image for any visible medical symptoms, injuries, skin conditions, or other clinically relevant observations." if has_image else "No image was provided."}
+
+Patient Symptoms/Context:
+{request.patient_context if request.patient_context else "None provided."}
+
+Relevant Clinical Facts (Retrieved from Medical Database):
+{text_context if text_context else "None retrieved."}
+
+Please provide a structured analysis including your observations{", incorporating what you see in the image," if has_image else ""} a preliminary severity assessment (low, medium, high), and actionable recommendations. Keep your response clear and clinical.
+"""
+
+    # 2. Call local Ollama API (multimodal — sends image + text to the model)
+    ollama_url = "http://localhost:11434/api/generate"
+    payload = {
+        "model": "gemma-medical",
+        "prompt": prompt,
+        "stream": False,
+    }
+
+    # Pass the patient image to the vision-capable model
+    if request.image:
+        # Strip data URL prefix if present (e.g., "data:image/png;base64,...")
+        img_data = request.image
+        if "," in img_data:
+            img_data = img_data.split(",", 1)[1]
+        payload["images"] = [img_data]
+    
+    analysis_result = "Failed to reach Ollama. Please ensure Ollama is running and the model is pulled."
+    severity = "medium"
+    recommendation = "Consult a healthcare provider."
+    
+    try:
+        response = requests.post(ollama_url, json=payload, timeout=60)
+        if response.status_code == 200:
+            data = response.json()
+            analysis_result = data.get("response", "No response text.")
+            
+            # Simple heuristic to extract severity from the unstructured LLM text
+            lower_analysis = analysis_result.lower()
+            if "severity: high" in lower_analysis or "high severity" in lower_analysis:
+                severity = "high"
+            elif "severity: low" in lower_analysis or "low severity" in lower_analysis:
+                severity = "low"
+    except Exception as e:
+        print(f"Ollama API error: {e}")
+
     return {
-        "analysis": "Analysis placeholder — wire up AnythingLLM here.",
-        "severity": "low",
-        "recommendation": "Consult a healthcare provider.",
+        "analysis": analysis_result,
+        "severity": severity,
+        "recommendation": recommendation,
+        "retrieved_context": text_context,
+        "reference_image": image_context
     }
 
 

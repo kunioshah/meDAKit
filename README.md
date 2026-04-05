@@ -32,6 +32,12 @@ The backend contains the API server as well as scripts to fine-tune the Gemma 4 
    HF_TOKEN=your_huggingface_token
    ```
 
+**Gemma Medical Model Folder:**
+
+If you need the prepared `gemma-medical` model files, use the Google Drive folder below. This folder is intended to store the exported model artifacts and any related checkpoints required to run or share the medical-tuned model outside the repository.
+
+- Google Drive folder: `https://drive.google.com/drive/folders/1ncAt94fa6tCLrPJiKRmfrpn4JqV1z98F?usp=sharing`
+
 **Running the API Server:**
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
@@ -58,6 +64,19 @@ The project includes a standalone data extraction pipeline to download Kaggle, R
    python pipeline.py
    ```
 
+**Two-Tower RAG Engine (Local & Multimodal):**
+The project features a custom RAG engine built on ChromaDB designed to run smoothly on both heavy GPUs (RTX 5070 Ti) and power-efficient NPU architectures (Snapdragon X Elite). 
+Instead of relying on external services or massive embedding models, it splits the vectorization into two lightweight, highly specialized towers:
+- **`SigLIP` (Image Tower):** A multimodal model that embeds the 2k+ medical images from the pipeline, allowing retrieval of reference images via text symptoms.
+- **`PubMedBERT` (Text Tower):** A tiny but clinically accurate model that embeds the HuggingFace medical facts dataset.
+
+*To pre-compute the vector database before a demo (Requires `pipeline.py` to be run first):*
+```bash
+cd backend
+python rag.py --ingest-images --ingest-hf
+```
+This generates a `chroma_db` folder. You can commit/share this folder so other machines (like a Snapdragon laptop) can run the RAG instantly without needing to generate embeddings.
+
 ### 2. Frontend
 
 The frontend is a web app built using React and Vite.
@@ -77,6 +96,16 @@ The frontend is a web app built using React and Vite.
    ```bash
    npm run dev
    ```
+
+## Hardware Used
+
+Fine-tuning the model and generating the vector database were performed locally on the following system:
+
+| Component | Specification |
+|-----------|---------------|
+| CPU | Intel Core i7-265KF |
+| RAM | 32 GB |
+| GPU | NVIDIA GeForce RTX 5070 Ti (16 GB VRAM) |
 
 ## Tools and Frameworks Used
 
