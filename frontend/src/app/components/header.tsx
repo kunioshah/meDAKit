@@ -5,17 +5,18 @@ interface HeaderProps {
   onConnectToPhone?: () => void;
   showConnect?: boolean;
   showHamburger?: boolean;
+  compact?: boolean;
 }
 
-export function Header({ onConnectToPhone, showConnect = true, showHamburger = true }: HeaderProps) {
+export function Header({ onConnectToPhone, showConnect = true, showHamburger = true, compact = false }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="bg-white/80 backdrop-blur-sm px-6 py-6">
+    <header className={`bg-white/80 backdrop-blur-sm px-6 ${compact ? 'py-2' : 'py-6'}`}>
       <div className="max-w-[960px] mx-auto flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <h1 className="text-3xl tracking-tight">
+          <h1 className={`tracking-tight ${compact ? 'text-xl' : 'text-3xl'}`}>
             <span className="text-black">ME</span>
             <span className="text-[#7ed957]">DAK</span>
             <span className="text-black">IT</span>

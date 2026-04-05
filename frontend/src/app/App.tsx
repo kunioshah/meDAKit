@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/header';
 import { DataDisplay } from './components/data-display';
 import { PatientInfoPanel } from './components/patient-info-panel';
@@ -6,10 +6,25 @@ import { PlusBackground } from './components/plus-background';
 import { ConnectModal } from './components/ConnectModal';
 
 export default function App() {
-  const [medicalData] = useState<{
+  const [medicalData, setMedicalData] = useState<{
     text?: string;
     images?: string[];
   }>({});
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/phone-data');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.text || data.images) setMedicalData(data);
+        }
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 2000);
+    return () => clearInterval(id);
+  }, []);
   const [isPatientPanelOpen, setIsPatientPanelOpen] = useState(false);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 

@@ -75,6 +75,18 @@ async def analyze(request: AnalyzeRequest):
 _latest_phone_data: dict = {}
 
 
+class PhoneData(BaseModel):
+    text: Optional[str] = None
+    images: Optional[list[str]] = None  # base64 data URLs
+
+
 @app.get("/api/phone-data")
 def get_phone_data():
     return _latest_phone_data
+
+
+@app.post("/api/phone-data")
+def post_phone_data(data: PhoneData):
+    global _latest_phone_data
+    _latest_phone_data = data.model_dump(exclude_none=True)
+    return {"status": "ok"}
