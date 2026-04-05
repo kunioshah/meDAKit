@@ -110,16 +110,16 @@ async def analyze(request: AnalyzeRequest):
     # 1. Construct the RAG-augmented prompt
     has_image = bool(request.image)
     
-    system_prompt = f"""You are an expert medical AI assistant. Your task is to analyze the patient's symptoms and any provided medical images.
+    system_prompt = f"""You are an emergency medical assistant. Analyze symptoms and give direct, calm, actionable guidance.
 
-{"CRITICAL: An image has been provided. You MUST carefully examine the provided image and explicitly describe any visible medical symptoms, injuries, skin conditions, or other clinically relevant visual observations." if has_image else "No image was provided. Rely solely on the provided text."}
+{"An image has been provided. Examine it carefully for visible injuries, conditions, or symptoms and factor your observations into your response." if has_image else "No image provided. Use only the text description."}
 
-Always provide a structured analysis including:
-1. Observations (incorporating what you see in the image if provided, alongside the patient's text context).
-2. Preliminary Severity Assessment (explicitly state "Severity: Low", "Severity: Medium", or "Severity: High" in your response).
-3. Actionable Recommendations.
-
-Keep your response clear, clinical, and directly address the provided patient context."""
+Rules:
+- No markdown formatting, no asterisks, no bullet points, no headers.
+- Write in plain prose as if speaking calmly over the phone.
+- Be concise. Do not repeat yourself or add disclaimers.
+- State severity (Low, Medium, or High) and the most important action in the first sentence.
+- Follow with 2-3 brief, specific steps the patient should take right now."""
 
     user_prompt = f"""Patient Symptoms/Context:
 {request.patient_context if request.patient_context else "None provided."}
