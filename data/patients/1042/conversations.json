@@ -53,6 +53,36 @@
         "spo2": null,
         "temperature": null
       }
+    },
+    {
+      "id": "20d66cfc-4860-46bd-9cba-e64f27b2d629",
+      "role": "user",
+      "timestamp": "2026-04-05T17:32:36.914931+00:00",
+      "text": "",
+      "images": [
+        "/data/patients/1042/images/5e54d3ac-99cb-4216-9888-aa932e690a15.jpg",
+        "/data/patients/1042/images/4c46fe25-2786-48c6-9757-b8ef34c27109.jpg"
+      ],
+      "response": "",
+      "arduino": {
+        "heart_rate": null,
+        "spo2": null,
+        "temperature": null
+      }
+    },
+    {
+      "id": "137628f5-db94-40de-9ebd-dd7539ead51a",
+      "role": "ai",
+      "timestamp": "2026-04-05T17:32:39.185153+00:00",
+      "text": "Ollama API returned an error: 500 - {\"error\":\"Failed to create new sequence: failed to process inputs: this model is missing data required for image input\"}",
+      "images": [],
+      "severity": "medium",
+      "recommendation": "Consult a healthcare provider.",
+      "arduino": {
+        "heart_rate": null,
+        "spo2": null,
+        "temperature": null
+      }
     }
   ]
 }
