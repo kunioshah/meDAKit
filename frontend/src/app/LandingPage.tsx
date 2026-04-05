@@ -1,3 +1,12 @@
+/**
+ * @file LandingPage.tsx
+ * @description Laptop patient grid page (/patients). Displays all patients as
+ * cards sorted by most recently updated. Supports live search by name or ID.
+ * Each card links directly to that patient's session page. Provides modals for
+ * creating new patients (with optional patient info fields) and editing existing
+ * ones (name, severity, injuries, and all patient info fields). Patients can
+ * also be deleted via a confirmation dialog.
+ */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { X, Pencil, Trash2, Search } from 'lucide-react';

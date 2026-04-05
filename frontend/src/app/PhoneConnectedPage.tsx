@@ -1,3 +1,10 @@
+/**
+ * @file PhoneConnectedPage.tsx
+ * @description Post-connection options page (/phone-connected). Shown after
+ * the user completes the QR code phone connection flow. Offers three actions:
+ * reopen the QR code modal, switch to laptop-only mode (/patients), or work
+ * concurrently with both phone and laptop (/patients with phone still active).
+ */
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { QrCode, Laptop, MonitorSmartphone } from 'lucide-react';

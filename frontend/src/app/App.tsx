@@ -1,3 +1,12 @@
+/**
+ * @file App.tsx
+ * @description Laptop session page for an active patient (/patient/:id/session).
+ * Polls /api/phone-data every 2s to receive input from a connected phone.
+ * Loads patient info on mount and passes it to the PatientInfoPanel sidebar.
+ * Passes the patient ID to ConnectModal so the QR code links directly to this
+ * patient's mobile session. Hosts the DataDisplay input/output area where
+ * text and images are submitted and saved to conversations.json.
+ */
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { Header } from './components/header';

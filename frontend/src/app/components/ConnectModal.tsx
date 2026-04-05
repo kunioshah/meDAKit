@@ -1,3 +1,13 @@
+/**
+ * @file ConnectModal.tsx
+ * @description Two-phase modal for connecting a phone to the laptop via WiFi
+ * hotspot. Phase 1: user enters hotspot SSID and password. Phase 2: displays
+ * two QR codes — one to join the WiFi network, one to open the app URL. If
+ * patientId is provided, the app QR links directly to that patient's mobile
+ * session (/mobile/patient/:id); otherwise links to the mobile patient list
+ * (/mobile). An optional onDone callback enables a "Done" button to advance
+ * to the phone-connected page.
+ */
 import { useState } from 'react';
 import { X, Wifi, Smartphone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';

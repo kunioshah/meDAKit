@@ -1,4 +1,13 @@
-import { useRef, useState } from 'react';
+/**
+ * @file data-display.tsx
+ * @description Main input/output panel for the laptop session page. Displays
+ * the AI-generated response in a scrollable output box. Accepts text input and
+ * multiple image uploads; on submit, saves the entry to conversations.json via
+ * POST /api/patients/:id/conversations with { text, images, response, arduino }.
+ * Polls /api/sensor-data every 2s and attaches the latest Arduino readings
+ * (heart_rate, spo2, temperature) to each submission as context for the model.
+ */
+import { useRef, useState, useEffect } from 'react';
 import { Image, ArrowRight, X } from 'lucide-react';
 
 interface DataDisplayProps {
@@ -14,6 +23,22 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
   const [inputImages, setInputImages] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [sensorData, setSensorData] = useState<{ heart_rate: number | null; spo2: number | null; temperature: number | null }>({
+    heart_rate: null, spo2: null, temperature: null,
+  });
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/sensor-data');
+        if (res.ok) setSensorData(await res.json());
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 2000);
+    return () => clearInterval(id);
+  }, []);
 
   const addImages = (files: FileList) => {
     Array.from(files).forEach(file => {
@@ -37,7 +62,8 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
         body: JSON.stringify({
           text: inputText,
           images: inputImages,
-          response: '',   // filled in once model is wired
+          response: '',
+          arduino: sensorData,
         }),
       });
       setInputText('');

@@ -1,3 +1,14 @@
+/**
+ * @file main.tsx
+ * @description Application entry point. Mounts the React app and defines all
+ * client-side routes via react-router. Routes:
+ *   /                       — Device select (PatientSelectPage)
+ *   /patients               — Laptop patient grid (LandingPage)
+ *   /phone-connected        — Post-QR options page (PhoneConnectedPage)
+ *   /patient/:id/session    — Laptop session / prompting page (App)
+ *   /mobile                 — Mobile patient list (MobilePatientListPage)
+ *   /mobile/patient/:id     — Mobile session / camera page (MobilePage)
+ */
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router";
 import LandingPage from "./app/LandingPage.tsx";

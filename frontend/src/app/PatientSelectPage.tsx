@@ -1,3 +1,10 @@
+/**
+ * @file PatientSelectPage.tsx
+ * @description Landing / device select page (/). Presents two options:
+ * "Connect to Phone" (opens ConnectModal with QR codes) and "Continue with
+ * Laptop" (navigates to /patients). After completing the phone QR flow,
+ * navigates to /phone-connected.
+ */
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Laptop, Smartphone } from 'lucide-react';

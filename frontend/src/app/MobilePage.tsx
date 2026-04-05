@@ -1,3 +1,13 @@
+/**
+ * @file MobilePage.tsx
+ * @description Mobile session / camera page (/mobile/patient/:id). The primary
+ * input interface for the phone. Supports portrait and landscape orientations
+ * with distinct responsive layouts. Features: take photo (camera capture),
+ * upload multiple images from gallery (iOS-safe, no camera shortcut), text
+ * input, and a generated response display box. On send, POSTs { text, images }
+ * to /api/phone-data for the laptop to poll. After first send, transitions to a
+ * compact bar with a [+] menu for adding more photos.
+ */
 import { useRef, useState } from 'react';
 import { Camera, Image, Mic, Plus, ArrowRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';

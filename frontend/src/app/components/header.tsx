@@ -1,5 +1,17 @@
+/**
+ * @file header.tsx
+ * @description Shared header component used across all pages. Features a
+ * left-anchored hamburger menu that opens a patient list sidebar (loads from
+ * /api/patients on open, patients grouped in a collapsible dropdown). Logo is
+ * absolutely centered. Right side shows "Connect to phone" button (when
+ * showConnect=true) and an Arduino connection status badge that polls
+ * /api/sensor-data every 3s — green when data is fresh within 6s, gray
+ * otherwise. logoOnly mode centers the logo with hamburger still present.
+ * showHamburger=false hides the menu (used on the mobile session page).
+ * mobileNav=true routes sidebar patient links to /mobile/patient/:id.
+ */
 import { useState, useEffect } from 'react';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { Menu, X, ChevronDown, Cpu } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 interface HeaderProps {
@@ -28,6 +40,23 @@ export function Header({
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [arduinoConnected, setArduinoConnected] = useState(false);
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/sensor-data');
+        if (res.ok) {
+          const d = await res.json();
+          const fresh = d.last_seen && (Date.now() - new Date(d.last_seen).getTime()) < 6000;
+          setArduinoConnected(!!fresh);
+        }
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 3000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -141,15 +170,19 @@ export function Header({
           {/* Logo — truly centered */}
           <div className="absolute left-1/2 -translate-x-1/2">{logo}</div>
 
-          {/* Connect button — right */}
-          {showConnect ? (
-            <button onClick={onConnectToPhone}
-              className="shrink-0 bg-[#e5e5e5] hover:bg-[#d5d5d5] text-black px-6 py-2.5 rounded-full transition-colors text-sm">
-              Connect to phone
-            </button>
-          ) : (
-            <div className="w-10 shrink-0" />
-          )}
+          {/* Right side */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm ${arduinoConnected ? 'bg-[#7ed957]/20 text-[#4a9e2a]' : 'bg-[#e5e5e5] text-gray-400'}`}>
+              <Cpu className="w-4 h-4" />
+              <span>{arduinoConnected ? 'Arduino' : 'No Arduino'}</span>
+            </div>
+            {showConnect && (
+              <button onClick={onConnectToPhone}
+                className="bg-[#e5e5e5] hover:bg-[#d5d5d5] text-black px-6 py-2.5 rounded-full transition-colors text-sm">
+                Connect to phone
+              </button>
+            )}
+          </div>
         </div>
       </header>
     </>

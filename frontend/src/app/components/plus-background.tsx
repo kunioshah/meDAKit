@@ -1,3 +1,9 @@
+/**
+ * @file plus-background.tsx
+ * @description Decorative animated background component. Renders a scrolling
+ * grid of faint "+" symbols in two offset layers to create a seamless
+ * vertical loop animation. Used as a fixed background on all pages.
+ */
 export function PlusBackground() {
   // Create a grid of plus symbols
   const plusSymbols = [];

@@ -166,6 +166,37 @@ Please provide a structured analysis including your observations{", incorporatin
 _latest_phone_data: dict = {}
 
 
+# ── Arduino sensor store ──────────────────────────────────────────────────────
+
+_latest_sensor_data: dict = {"heart_rate": None, "spo2": None, "temperature": None, "last_seen": None}
+
+
+class SensorData(BaseModel):
+    heart_rate: Optional[float] = None
+    spo2: Optional[float] = None
+    temperature: Optional[float] = None
+    # Serial-provisioned WiFi credentials (sent by Arduino on connect)
+    ssid: Optional[str] = None
+    password: Optional[str] = None
+
+
+@app.get("/api/sensor-data")
+def get_sensor_data():
+    return _latest_sensor_data
+
+
+@app.post("/api/sensor-data")
+def post_sensor_data(data: SensorData):
+    global _latest_sensor_data
+    _latest_sensor_data = {
+        "heart_rate": data.heart_rate,
+        "spo2": data.spo2,
+        "temperature": data.temperature,
+        "last_seen": datetime.now(timezone.utc).isoformat(),
+    }
+    return {"status": "ok"}
+
+
 class PhoneData(BaseModel):
     text: Optional[str] = None
     images: Optional[list[str]] = None  # base64 data URLs
@@ -203,10 +234,16 @@ def generate_patient_id() -> str:
 class PatientLoginRequest(BaseModel):
     patient_id: str
 
+class ArduinoData(BaseModel):
+    heart_rate: Optional[float] = None
+    spo2: Optional[float] = None
+    temperature: Optional[float] = None
+
 class ConversationEntryRequest(BaseModel):
     text: Optional[str] = None
     images: Optional[list[str]] = None  # base64 data URLs
     response: Optional[str] = None
+    arduino: Optional[ArduinoData] = None
 
 
 @app.get("/api/patients")
@@ -352,6 +389,7 @@ def add_conversation_entry(patient_id: str, req: ConversationEntryRequest):
         "text": req.text or "",
         "images": image_paths,
         "response": req.response or "",
+        "arduino": req.arduino.model_dump() if req.arduino else {"heart_rate": None, "spo2": None, "temperature": None},
     }
     data.setdefault("conversations", []).append(entry)
     with open(conv_path, "w") as f:

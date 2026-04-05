@@ -1,3 +1,12 @@
+/**
+ * @file MobilePatientListPage.tsx
+ * @description Mobile patient list page (/mobile). Mirrors the laptop patient
+ * grid but optimized for phone screens. Displays patients sorted by most
+ * recently updated with live search by name or ID. Edit and delete buttons are
+ * always visible (not hover-only). Tapping a card navigates to that patient's
+ * mobile session (/mobile/patient/:id). Supports creating new patients with
+ * optional patient info fields inline.
+ */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Search, Pencil, Trash2, X } from 'lucide-react';
