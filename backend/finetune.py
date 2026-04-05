@@ -20,8 +20,21 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import load_dotenv
-load_dotenv()
+def _load_env(path=".env"):
+    """Load .env file without requiring python-dotenv."""
+    from pathlib import Path
+    env_file = Path(path)
+    if not env_file.is_file():
+        # Also check parent directory (if running from backend/)
+        env_file = Path("..") / path
+    if env_file.is_file():
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, value = line.partition("=")
+                os.environ.setdefault(key.strip(), value.strip())
+
+_load_env()
 
 import torch
 from datasets import load_dataset
