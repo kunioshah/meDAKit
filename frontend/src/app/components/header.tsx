@@ -4,9 +4,10 @@ import { Menu, X } from 'lucide-react';
 interface HeaderProps {
   onConnectToPhone?: () => void;
   showConnect?: boolean;
+  showHamburger?: boolean;
 }
 
-export function Header({ onConnectToPhone, showConnect = true }: HeaderProps) {
+export function Header({ onConnectToPhone, showConnect = true, showHamburger = true }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
@@ -39,13 +40,15 @@ export function Header({ onConnectToPhone, showConnect = true }: HeaderProps) {
         )}
 
         {/* Mobile Hamburger Menu */}
-        <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="md:hidden p-2 text-black"
-          aria-label="Toggle menu"
-        >
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        {showHamburger && (
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden p-2 text-black"
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        )}
       </div>
 
       {/* Mobile Menu */}
