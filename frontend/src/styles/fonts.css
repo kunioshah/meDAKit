@@ -1,6 +1,0 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-/* FOT-Seurat Pro font - fallback to similar fonts if not available */
-body {
-  font-family: 'FOT-Seurat Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
