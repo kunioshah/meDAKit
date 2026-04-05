@@ -5,6 +5,7 @@ import PatientSelectPage from "./app/PatientSelectPage.tsx";
 import PhoneConnectedPage from "./app/PhoneConnectedPage.tsx";
 import App from "./app/App.tsx";
 import MobilePage from "./app/MobilePage.tsx";
+import MobilePatientListPage from "./app/MobilePatientListPage.tsx";
 import "./styles/index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -14,7 +15,8 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/patients" element={<LandingPage />} />
       <Route path="/phone-connected" element={<PhoneConnectedPage />} />
       <Route path="/patient/:id/session" element={<App />} />
-      <Route path="/mobile" element={<MobilePage />} />
+      <Route path="/mobile" element={<MobilePatientListPage />} />
+      <Route path="/mobile/patient/:id" element={<MobilePage />} />
     </Routes>
   </BrowserRouter>
 );

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router';
 import { Header } from './components/header';
 import { DataDisplay } from './components/data-display';
 import { PatientInfoPanel } from './components/patient-info-panel';
@@ -6,6 +7,7 @@ import { PlusBackground } from './components/plus-background';
 import { ConnectModal } from './components/ConnectModal';
 
 export default function App() {
+  const { id } = useParams<{ id: string }>();
   const [medicalData, setMedicalData] = useState<{
     text?: string;
     images?: string[];
@@ -48,6 +50,7 @@ export default function App() {
       <ConnectModal
         isOpen={isConnectModalOpen}
         onClose={() => setIsConnectModalOpen(false)}
+        patientId={id}
       />
 
       {/* Patient Info Button - Fixed on Side */}
