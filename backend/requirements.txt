@@ -4,3 +4,12 @@ python-multipart
 pillow
 requests
 pydantic
+python-dotenv
+transformers @ git+https://github.com/huggingface/transformers.git
+peft @ git+https://github.com/huggingface/peft.git
+trl @ git+https://github.com/huggingface/trl.git
+accelerate>=1.5.0
+datasets
+scipy
+bitsandbytes>=0.45.0
+huggingface_hub
