@@ -4,8 +4,8 @@
  * cards sorted by most recently updated. Supports live search by name or ID.
  * Each card links directly to that patient's session page. Provides modals for
  * creating new patients (with optional patient info fields) and editing existing
- * ones (name, severity, injuries, and all patient info fields). Patients can
- * also be deleted via a confirmation dialog.
+ * ones (name and all patient info fields). Patients can also be deleted via a
+ * confirmation dialog.
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -16,8 +16,6 @@ import { PlusBackground } from './components/plus-background';
 interface Patient {
   id: string;
   name: string;
-  severity?: string;
-  injuries?: string;
   sex?: string;
   age?: string;
   medications?: string;
@@ -33,13 +31,6 @@ function formatDate(iso?: string) {
   return `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
 }
 
-function severityColor(severity?: string) {
-  if (!severity) return 'text-gray-700';
-  const s = severity.toLowerCase();
-  if (s === 'critical' || s === 'severe' || s === 'bad') return 'text-red-600';
-  if (s === 'moderate') return 'text-orange-500';
-  return 'text-gray-700';
-}
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -56,7 +47,7 @@ export default function LandingPage() {
 
   // Edit modal
   const [editPatient, setEditPatient] = useState<Patient | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', severity: '', injuries: '', sex: '', age: '', medications: '', allergies: '', medical_history: '' });
+  const [editForm, setEditForm] = useState({ name: '', sex: '', age: '', medications: '', allergies: '', medical_history: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   const loadPatients = () => {
@@ -172,21 +163,13 @@ export default function LandingPage() {
                       <p className="text-sm text-gray-700">
                         Last Updated: {formatDate(p.last_updated ?? p.created_at)}
                       </p>
-                      {p.severity && (
-                        <p className={`text-sm ${severityColor(p.severity)}`}>
-                          Severity Level: {p.severity}
-                        </p>
-                      )}
-                      {p.injuries && (
-                        <p className="text-sm text-gray-700">Injuries: {p.injuries}</p>
-                      )}
                     </div>
                   </button>
 
                   {/* Edit / Delete buttons */}
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={e => { e.stopPropagation(); setEditPatient(p); setEditForm({ name: p.name ?? '', severity: p.severity ?? '', injuries: p.injuries ?? '', sex: p.sex ?? '', age: p.age ?? '', medications: p.medications ?? '', allergies: p.allergies ?? '', medical_history: p.medical_history ?? '' }); }}
+                      onClick={e => { e.stopPropagation(); setEditPatient(p); setEditForm({ name: p.name ?? '', sex: p.sex ?? '', age: p.age ?? '', medications: p.medications ?? '', allergies: p.allergies ?? '', medical_history: p.medical_history ?? '' }); }}
                       className="w-8 h-8 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-sm transition-colors"
                       aria-label="Edit patient"
                     >
@@ -308,21 +291,6 @@ export default function LandingPage() {
                     onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow" />
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-700 mb-1.5">Severity Level</label>
-                  <input type="text" value={editForm.severity}
-                    onChange={e => setEditForm(f => ({ ...f, severity: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow"
-                    placeholder="e.g. Mild, Moderate, Severe" />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-700 mb-1.5">Injuries / Notes</label>
-                  <textarea rows={3} value={editForm.injuries}
-                    onChange={e => setEditForm(f => ({ ...f, injuries: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow resize-none"
-                    placeholder="e.g. Fractured leg, dislocated shoulder" />
-                </div>
-
                 <details open className="group">
                   <summary className="cursor-pointer text-sm font-medium text-gray-600 hover:text-gray-800 list-none flex items-center justify-between select-none">
                     Patient Information

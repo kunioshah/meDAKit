@@ -77,11 +77,13 @@ export function Header({
   ) : <div className="w-10 shrink-0" />;
 
   const logo = (
-    <h1 className={`tracking-tight ${compact ? 'text-xl' : 'text-3xl'}`}>
-      <span className="text-black font-bold">me</span>
-      <span className="text-[#7ed957] font-bold">DAK</span>
-      <span className="text-black font-bold">it</span>
-    </h1>
+    <button onClick={() => navigate('/')} className="tracking-tight hover:opacity-80 transition-opacity">
+      <h1 className={`${compact ? 'text-xl' : 'text-3xl'}`}>
+        <span className="text-black font-bold">me</span>
+        <span className="text-[#7ed957] font-bold">DAK</span>
+        <span className="text-black font-bold">it</span>
+      </h1>
+    </button>
   );
 
   const sidebar = (

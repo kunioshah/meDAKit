@@ -152,7 +152,7 @@ Relevant Clinical Facts (Retrieved from Medical Database):
     recommendation = "Consult a healthcare provider."
     
     try:
-        response = requests.post(ollama_url, json=payload, timeout=60)
+        response = requests.post(ollama_url, json=payload, timeout=300)
         if response.status_code == 200:
             data = response.json()
             analysis_result = data.get("response", "No response text.")

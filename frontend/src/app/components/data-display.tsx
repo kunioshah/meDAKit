@@ -21,17 +21,14 @@ interface ConversationEntry {
 }
 
 interface DataDisplayProps {
-  data: {
-    text?: string;
-    images?: string[];
-  };
   patientId?: string;
 }
 
-export function DataDisplay({ data, patientId }: DataDisplayProps) {
+export function DataDisplay({ patientId }: DataDisplayProps) {
   const [inputText, setInputText] = useState('');
   const [inputImages, setInputImages] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
+  const [awaitingResponse, setAwaitingResponse] = useState(false);
   const [conversations, setConversations] = useState<ConversationEntry[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,6 +37,25 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
     heart_rate: null, spo2: null, temperature: null,
   });
 
+  const fetchConversations = async () => {
+    if (!patientId) return;
+    try {
+      const res = await fetch(`/api/patients/${patientId}/conversations`);
+      if (res.ok) {
+        const json = await res.json();
+        const sorted = (json.conversations || []).sort((a: any, b: any) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+        setConversations(sorted);
+        // Check if latest entry now has a response — unblock input
+        if (sorted.length > 0) {
+          const last = sorted[sorted.length - 1];
+          if (last.role !== 'user' || last.response) setAwaitingResponse(false);
+        }
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     const pollSensor = async () => {
       try {
@@ -47,24 +63,12 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
         if (res.ok) setSensorData(await res.json());
       } catch {}
     };
-    const pollConversations = async () => {
-      if (!patientId) return;
-      try {
-        const res = await fetch(`/api/patients/${patientId}/conversations`);
-        if (res.ok) {
-          const json = await res.json();
-          const sorted = (json.conversations || []).sort((a: any, b: any) => 
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-          );
-          setConversations(sorted);
-        }
-      } catch {}
-    };
 
     pollSensor();
-    pollConversations();
-    const id1 = setInterval(pollSensor, 2000);
-    const id2 = setInterval(pollConversations, 2000);
+    fetchConversations();
+    const id1 = setInterval(pollSensor, 5000);
+    // Slow fallback poll for phone-side submissions
+    const id2 = setInterval(fetchConversations, 10000);
     return () => {
       clearInterval(id1);
       clearInterval(id2);
@@ -77,9 +81,6 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
     }
   }, [conversations]);
 
-  useEffect(() => {
-    if (data.text && !inputText) setInputText(data.text);
-  }, [data.text]);
 
   const addImages = (files: FileList) => {
     Array.from(files).forEach(file => {
@@ -95,7 +96,9 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
   const handleSubmit = async () => {
     if (!inputText.trim() && inputImages.length === 0) return;
     if (!patientId) return;
+    if (awaitingResponse) return;
     setSending(true);
+    setAwaitingResponse(true);
     try {
       await fetch(`/api/patients/${patientId}/conversations`, {
         method: 'POST',
@@ -109,6 +112,7 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
       });
       setInputText('');
       setInputImages([]);
+      await fetchConversations();
     } finally {
       setSending(false);
     }
@@ -180,11 +184,12 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
         <div className="flex items-center gap-3">
           <input
             type="text"
-            placeholder="Enter additional information..."
+            placeholder={awaitingResponse ? 'Waiting for response…' : 'Enter additional information...'}
             value={inputText}
             onChange={e => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent border-none outline-none text-black placeholder:text-gray-600 text-lg"
+            disabled={awaitingResponse}
+            className="flex-1 bg-transparent border-none outline-none text-black placeholder:text-gray-500 text-lg disabled:cursor-not-allowed"
           />
           <button
             type="button"
@@ -197,7 +202,7 @@ export function DataDisplay({ data, patientId }: DataDisplayProps) {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={sending || (!inputText.trim() && inputImages.length === 0)}
+            disabled={sending || awaitingResponse || (!inputText.trim() && inputImages.length === 0)}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-[#7ed957] hover:bg-[#6ec847] disabled:opacity-40 transition-colors"
             aria-label="Send"
           >

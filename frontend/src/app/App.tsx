@@ -38,25 +38,6 @@ export default function App() {
       .then(d => d && setPatientInfo(d.patient_info))
       .catch(() => {});
   }, [id]);
-  const [medicalData, setMedicalData] = useState<{
-    text?: string;
-    images?: string[];
-  }>({});
-
-  useEffect(() => {
-    const poll = async () => {
-      try {
-        const res = await fetch('/api/phone-data');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.text || data.images) setMedicalData(data);
-        }
-      } catch {}
-    };
-    poll();
-    const id = setInterval(poll, 2000);
-    return () => clearInterval(id);
-  }, []);
   const [isPatientPanelOpen, setIsPatientPanelOpen] = useState(false);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 
@@ -68,7 +49,7 @@ export default function App() {
         <Header onConnectToPhone={() => setIsConnectModalOpen(true)} />
 
         <main className="flex-1 min-h-0 flex flex-col max-w-[960px] mx-auto w-full px-6 py-6">
-          <DataDisplay data={medicalData} patientId={id} />
+          <DataDisplay patientId={id} />
         </main>
       </div>
 

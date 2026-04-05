@@ -16,8 +16,6 @@ import { PlusBackground } from './components/plus-background';
 interface Patient {
   id: string;
   name: string;
-  severity?: string;
-  injuries?: string;
   last_updated?: string;
   created_at?: string;
 }
@@ -28,13 +26,6 @@ function formatDate(iso?: string) {
   return `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
 }
 
-function severityColor(severity?: string) {
-  if (!severity) return 'text-gray-700';
-  const s = severity.toLowerCase();
-  if (s === 'critical' || s === 'severe' || s === 'bad') return 'text-red-600';
-  if (s === 'moderate') return 'text-orange-500';
-  return 'text-gray-700';
-}
 
 export default function MobilePatientListPage() {
   const navigate = useNavigate();
@@ -50,7 +41,7 @@ export default function MobilePatientListPage() {
 
   // Edit modal
   const [editPatient, setEditPatient] = useState<Patient | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', severity: '', injuries: '' });
+  const [editForm, setEditForm] = useState({ name: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   const loadPatients = () => {
@@ -164,14 +155,6 @@ export default function MobilePatientListPage() {
                       <p className="text-sm text-gray-700">
                         Last Updated: {formatDate(p.last_updated ?? p.created_at)}
                       </p>
-                      {p.severity && (
-                        <p className={`text-sm ${severityColor(p.severity)}`}>
-                          Severity Level: {p.severity}
-                        </p>
-                      )}
-                      {p.injuries && (
-                        <p className="text-sm text-gray-700">Injuries: {p.injuries}</p>
-                      )}
                     </div>
                   </button>
 
@@ -183,7 +166,7 @@ export default function MobilePatientListPage() {
                     <button
                       onClick={() => {
                         setEditPatient(p);
-                        setEditForm({ name: p.name ?? '', severity: p.severity ?? '', injuries: p.injuries ?? '' });
+                        setEditForm({ name: p.name ?? '' });
                       }}
                       className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors py-1"
                     >
@@ -304,20 +287,6 @@ export default function MobilePatientListPage() {
                   <input type="text" required value={editForm.name}
                     onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow" />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-700 mb-1.5">Severity Level</label>
-                  <input type="text" value={editForm.severity}
-                    onChange={e => setEditForm(f => ({ ...f, severity: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow"
-                    placeholder="e.g. Mild, Moderate, Severe" />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-700 mb-1.5">Injuries / Notes</label>
-                  <textarea rows={3} value={editForm.injuries}
-                    onChange={e => setEditForm(f => ({ ...f, injuries: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7ed957] transition-shadow resize-none"
-                    placeholder="e.g. Fractured leg, dislocated shoulder" />
                 </div>
                 <button type="submit" disabled={editSaving}
                   className="w-full bg-[#7ed957] hover:bg-[#6ec847] disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-colors">

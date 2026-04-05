@@ -25,6 +25,18 @@
         "/data/patients/D8FB/images/4f34df74-88e4-4bb1-b562-0659f0cf1a88.jpg"
       ],
       "response": ""
+    },
+    {
+      "id": "61794793-230c-43ee-b93f-397d16b673ef",
+      "timestamp": "2026-04-05T14:09:48.671621+00:00",
+      "text": "hello",
+      "images": [],
+      "response": "",
+      "arduino": {
+        "heart_rate": null,
+        "spo2": null,
+        "temperature": null
+      }
     }
   ]
 }

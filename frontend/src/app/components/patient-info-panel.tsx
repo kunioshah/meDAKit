@@ -1,3 +1,11 @@
+/**
+ * @file patient-info-panel.tsx
+ * @description Slide-in right panel for viewing and editing persistent patient
+ * information (sex, age, medications, allergies, medical history). Pre-populates
+ * from the patient's info.json on open. Saves changes via PATCH
+ * /api/patients/:id, updating the JSON file directly. Shows "Saved!" feedback
+ * on success. Requires patientId to enable saving.
+ */
 import { useEffect, useState } from 'react';
 import { X, User, AlertCircle, Pill, FileText } from 'lucide-react';
 

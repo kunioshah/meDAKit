@@ -33,31 +33,34 @@ export default function MobilePage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [awaitingResponse, setAwaitingResponse] = useState(false);
   const [hasSent, setHasSent] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationEntry[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const pollConversations = async () => {
-      if (!id) return;
-      try {
-        const res = await fetch(`/api/patients/${id}/conversations`);
-        if (res.ok) {
-          const json = await res.json();
-          const sorted = (json.conversations || []).sort((a: any, b: any) => 
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-          );
-          if (sorted.length > 0) {
-             setHasSent(true);
-          }
-          setConversations(sorted);
+  const fetchConversations = async () => {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/patients/${id}/conversations`);
+      if (res.ok) {
+        const json = await res.json();
+        const sorted = (json.conversations || []).sort((a: any, b: any) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+        if (sorted.length > 0) setHasSent(true);
+        setConversations(sorted);
+        if (sorted.length > 0) {
+          const last = sorted[sorted.length - 1];
+          if (last.role !== 'user' || last.response) setAwaitingResponse(false);
         }
-      } catch {}
-    };
+      }
+    } catch {}
+  };
 
-    pollConversations();
-    const timer = setInterval(pollConversations, 2000);
+  useEffect(() => {
+    fetchConversations();
+    const timer = setInterval(fetchConversations, 10000);
     return () => clearInterval(timer);
   }, [id]);
 
@@ -69,8 +72,10 @@ export default function MobilePage() {
 
   const handleSend = async () => {
     if (!id || (!inputText.trim() && images.length === 0)) return;
+    if (awaitingResponse) return;
     setSending(true);
     setHasSent(true);
+    setAwaitingResponse(true);
     try {
       await fetch(`/api/patients/${id}/conversations`, {
         method: 'POST',
@@ -79,6 +84,7 @@ export default function MobilePage() {
       });
       setInputText('');
       setImages([]);
+      await fetchConversations();
     } finally {
       setSending(false);
     }
@@ -200,14 +206,14 @@ export default function MobilePage() {
   );
 
   const sendBtn = (cls = '') => (
-    <button onClick={handleSend} disabled={sending}
+    <button onClick={handleSend} disabled={sending || awaitingResponse}
       className={`shrink-0 bg-[#7ed957] hover:bg-[#6ec847] disabled:opacity-50 text-black rounded-[20px] font-semibold tracking-widest text-sm transition-colors ${cls}`}>
-      SEND
+      {awaitingResponse ? '…' : 'SEND'}
     </button>
   );
 
   const arrowSendBtn = (
-    <button onClick={handleSend} disabled={sending}
+    <button onClick={handleSend} disabled={sending || awaitingResponse}
       className="shrink-0 w-11 h-11 bg-[#7ed957] hover:bg-[#6ec847] disabled:opacity-50 text-black rounded-full flex items-center justify-center transition-colors">
       <ArrowRight className="w-5 h-5" />
     </button>
@@ -335,12 +341,14 @@ export default function MobilePage() {
         <main className="landscape:hidden flex-1 min-h-0 px-4 pt-2 pb-4 flex flex-col gap-3">
           {genBox('flex-1 min-h-0')}
           {portraitInitialCards}
-          {portraitThumbnail}
           {/* Standard input shown before first upload */}
           {!hasSent && (
-            <div className="flex gap-3 items-stretch shrink-0">
-              {textInput('flex-1')}
-              {sendBtn('px-4 min-w-14 flex items-center justify-center')}
+            <div className="flex flex-col gap-2 shrink-0">
+              {portraitThumbnail}
+              <div className="flex gap-3 items-stretch">
+                {textInput('flex-1')}
+                {sendBtn('px-4 min-w-14 flex items-center justify-center')}
+              </div>
             </div>
           )}
           {portraitCompactBar}
