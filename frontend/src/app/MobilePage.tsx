@@ -7,7 +7,7 @@ export default function MobilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="min-h-screen bg-[#f5f5f5] relative flex flex-col">
+    <div className="bg-[#f5f5f5] relative flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
       <PlusBackground />
 
       <div className="relative z-10 flex flex-col flex-1">
